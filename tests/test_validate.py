@@ -183,6 +183,18 @@ def test_state_evolution_columns_are_not_changes(tmp_path):
     assert run_gate(new, previous_dir=prev)["diff"]["total_changes"] == 0
 
 
+def test_dd_expiry_filled_in_later_is_not_a_change(tmp_path):
+    """expires_on is blank until the 26th session arrives, then filled in: no provider change."""
+    old_dd = wf.dd_rows()
+    for r in old_dd:
+        r["expires_on"] = ""
+    prev = wf.build_run(tmp_path / "prev", dd=old_dd)
+    new = wf.build_run(tmp_path / "new")
+    assert any(r["expires_on"] for r in wf.dd_rows())  # the new build has the dates filled in
+    res = run_gate(new, previous_dir=prev, max_historical_changes=0)
+    assert res["diff"]["total_changes"] == 0 and res["status"] == "PASS"
+
+
 def test_historical_changes_counted_and_limit_enforced(tmp_path):
     def mutate(ftd, dd):
         del dd[0]  # removed

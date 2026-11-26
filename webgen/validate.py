@@ -58,8 +58,9 @@ DEFAULT_UPSTREAM = Path(
 RATE_FILL_FAIL_BUSINESS_DAYS = 3  # more business days of carried-forward FRED rate is a FAIL
 
 # Event identity and the columns that are fixed once an event exists. Columns that evolve
-# with time (invalidation dates / flags, removal reasons) are deliberately not compared:
-# they change legitimately every day and would trip the gate for no reason.
+# with time (invalidation dates / flags, removal reasons, a DD's expires_on, which stays blank
+# until its 26th session arrives) are deliberately not compared: they change legitimately
+# every day and would trip the gate for no reason.
 FTD_KEY, FTD_STABLE = (
     ("index", "ftd_date"),
     (
@@ -74,7 +75,7 @@ FTD_KEY, FTD_STABLE = (
         "invalidated_at_detection",
     ),
 )
-DD_KEY, DD_STABLE = (("index", "date"), ("pct_change", "volume_change_pct", "expires_on"))
+DD_KEY, DD_STABLE = (("index", "date"), ("pct_change", "volume_change_pct"))
 # Dates that must all lie before the cutoff for an event to be compared. An FTD that was
 # designated on an old date but first detected after the cutoff did not exist in the previous
 # run, so it is new information, not a change.
