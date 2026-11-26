@@ -657,6 +657,16 @@ def test_recorded_contamination_figures_equal_the_data(built):  # noqa: F811
     )
 
 
+def test_contamination_verify_reports_missing_data_instead_of_crashing(tmp_path):
+    """An index with no rows in the recorded period is a problem to report, not a crash."""
+    p = tmp_path / "daily_status.csv"
+    p.write_text("date,index,close,is_dd,d25,risk_level\n"
+                 "2026-12-01,^GSPC,100,False,0,NORMAL\n", encoding="utf-8")
+    problems = contamination.verify(p)
+    assert any("^GSPC" in x and "no rows" in x for x in problems)
+    assert any("^IXIC" in x and "no rows" in x for x in problems)
+
+
 def test_contamination_figures_ignore_sessions_after_the_recorded_period(tmp_path):
     """New daily sessions must not move the figures recorded for 2000-01-03..2026-11-06."""
     import csv as _csv

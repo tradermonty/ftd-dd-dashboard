@@ -62,6 +62,8 @@ def recompute(daily_status: Path) -> dict:
     out: dict = {"dd_day_share": {}, "d25_at_or_above_severe_share": {}, "p_drawdown_60d": {}}
     for sym in ("^GSPC", "^IXIC"):
         r = [x for x in rows if x["index"] == sym]
+        if not r:  # no rows in the recorded period: verify() reports it
+            continue
         dates, closes = [x["date"] for x in r], [float(x["close"]) for x in r]
         out["dd_day_share"][sym] = sum(1 for x in r if x["is_dd"] == "True") / len(r)
         out["d25_at_or_above_severe_share"][sym] = sum(
@@ -70,7 +72,9 @@ def recompute(daily_status: Path) -> dict:
         res = evaluate.drawdown_prob(
             dates, closes, [x["risk_level"] for x in r], dates[0], dates[-1]
         )["by_label"]
-        out["p_drawdown_60d"][sym] = {k: res[k]["p"] for k in ("NORMAL", "SEVERE")}
+        out["p_drawdown_60d"][sym] = {
+            k: res[k]["p"] if k in res else None for k in ("NORMAL", "SEVERE")
+        }
     return out
 
 
@@ -79,13 +83,22 @@ def verify(daily_status: Path) -> list[str]:
     got = recompute(daily_status)
     want = CONTAMINATION_R["figures"]
     problems = []
+    start, end = CONTAMINATION_R["period"]
     for sym, share in want["dd_day_share"].items():
+        if sym not in got["dd_day_share"]:
+            problems.append(f"{sym}: no rows in the recorded period {start}..{end}")
+            continue
         if abs(got["dd_day_share"][sym] - share) > TOLERANCE:
             problems.append(
                 f"DD share {sym}: recorded {share}, data {got['dd_day_share'][sym]:.4f}"
             )
     for sym, levels in want["p_drawdown_60d"].items():
+        if sym not in got["p_drawdown_60d"]:
+            continue  # already reported above
         for lv, p in levels.items():
+            if got["p_drawdown_60d"][sym][lv] is None:
+                problems.append(f"P(drawdown) {sym} {lv}: no complete 60-session window")
+                continue
             if abs(got["p_drawdown_60d"][sym][lv] - p) > TOLERANCE:
                 problems.append(
                     f"P(drawdown) {sym} {lv}: recorded {p}, "
