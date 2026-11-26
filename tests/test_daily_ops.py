@@ -294,6 +294,35 @@ def test_stale_fred_under_use_cache_fails_with_a_clear_message(tmp_path):
     )
 
 
+def test_fred_file_covering_the_rate_the_last_return_needs_is_enough(tmp_path):
+    """The last return uses the rate dated on or before dates[-3] (rate_known lag 1 + rates[k-1]),
+    the same rule as the rate_data gate. A Fed holiday on an NYSE session (Veterans Day) leaves
+    the file one observation short of dates[-2]: that must not stop an offline recompute."""
+    p = tmp_path / "fred_DFF.csv"
+    write_dff(p, "2026-11-04")  # dates[-3] of SESSIONS
+    assert overlay.dff_staleness(p, SESSIONS, now=datetime.now(UTC))["hard"] is None
+    rows = overlay.load_or_fetch_dff(
+        p, lambda u: pytest.fail("network"), dates=SESSIONS, allow_network=False,
+        now=datetime.now(UTC),
+    )
+    assert rows[-1][0] == "2026-11-04"
+
+
+def test_a_refresh_that_is_still_insufficient_fails_like_the_offline_path(tmp_path):
+    """Network and offline paths must agree: a download that still lacks dates[-3] is an error."""
+    p = tmp_path / "fred_DFF.csv"
+    write_dff(p, "2026-11-02")
+    with pytest.raises(overlay.StaleRateData) as err:
+        overlay.load_or_fetch_dff(p, fake_fred("2026-11-03"), dates=SESSIONS, now=NOW)
+    assert "2026-11-03" in str(err.value)
+    with pytest.raises(overlay.StaleRateData) as err:
+        overlay.load_or_fetch_dff(
+            p, lambda u: pytest.fail("network"), dates=SESSIONS, allow_network=False, now=NOW
+        )
+    # the gate recompute is offline without --use-cache: the message must not claim the flag
+    assert "(--use-cache)" not in str(err.value) and "--refresh-fred" in str(err.value)
+
+
 def test_failed_refresh_of_an_insufficient_file_is_an_error_not_a_silent_keep(tmp_path):
     p = tmp_path / "fred_DFF.csv"
     write_dff(p, "2026-11-03")

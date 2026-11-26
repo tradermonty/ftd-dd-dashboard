@@ -350,11 +350,18 @@ class StaleRateData(RuntimeError):
 DFF_MAX_AGE_DAYS = 3  # a cache file older than this is refreshed when the network is allowed
 
 
+def rate_needed_through(dates: Sequence[str]) -> str:
+    """Date of the FRED observation the last return of `dates` needs (see dff_staleness)."""
+    return dates[-3] if len(dates) >= 3 else dates[0]
+
+
 def dff_staleness(path: Path, dates: Sequence[str], now: datetime | None = None) -> dict:
     """Is the cached FRED file good enough for the price data in `dates`?
 
-    "hard": the last observation is earlier than the second-to-last session of the price data
-    (the rate for the last return days would be carried forward), or the file is missing.
+    "hard": the last observation is earlier than the observation the last return needs, or the
+    file is missing. The last return (dates[-2] -> dates[-1]) uses rates[k-1] with the lag-1
+    rule of `rate_known`, i.e. the newest observation dated on or before dates[-3] -- the same
+    date the rate_data gate checks (webgen/validate.py).
     "soft": the file itself is more than DFF_MAX_AGE_DAYS days old (refreshed when allowed, but
     not an error when it must not be)."""
     path = Path(path)
@@ -365,11 +372,11 @@ def dff_staleness(path: Path, dates: Sequence[str], now: datetime | None = None)
     rows = load_dff(path)
     last_obs = rows[-1][0] if rows else None
     out["last_observation"] = last_obs
-    need = dates[-2] if len(dates) >= 2 else dates[-1]
+    need = rate_needed_through(dates)
     if last_obs is None or last_obs < need:
         out["hard"] = (
-            f"the last FRED observation ({last_obs}) is earlier than the second-to-last "
-            f"session of the price data ({need})"
+            f"the last FRED observation ({last_obs}) is earlier than {need}, the date of the "
+            "rate the last return of the price data needs"
         )
     age = ((now or datetime.now(UTC)) - datetime.fromtimestamp(path.stat().st_mtime, UTC)).days
     if age > DFF_MAX_AGE_DAYS:
@@ -397,12 +404,13 @@ def load_or_fetch_dff(
     """Read the cached FRED DFF file, downloading it when it is missing or stale.
 
     With `dates` (the sessions of the price data) the cache is refreshed when its last
-    observation is earlier than the second-to-last session, or when the file is older than
-    DFF_MAX_AGE_DAYS. `fetch` is the downloader (tests inject one; None uses the real URL).
-    With allow_network False nothing is downloaded: a cache that is stale in the first sense
-    raises StaleRateData with a clear message (a merely old file is accepted). A failed
-    refresh of an old-but-sufficient file keeps the file; a failed refresh of an insufficient
-    one raises."""
+    observation is earlier than the one the last return needs (`rate_needed_through`), or when
+    the file is older than DFF_MAX_AGE_DAYS. `fetch` is the downloader (tests inject one; None
+    uses the real URL). With allow_network False nothing is downloaded: a cache that is stale
+    in the first sense raises StaleRateData with a clear message (a merely old file is
+    accepted). A failed refresh of an old-but-sufficient file keeps the file; a failed refresh
+    of an insufficient one raises, and so does a refresh that downloaded a file which is still
+    insufficient -- the network path accepts exactly what the offline recompute accepts."""
     path = Path(path)
     st = dff_staleness(path, dates, now) if dates else {"hard": None, "soft": None}
     if not path.exists():
@@ -411,8 +419,9 @@ def load_or_fetch_dff(
         if not allow_network:
             if st["hard"]:
                 raise StaleRateData(
-                    f"FRED cache is stale: {st['hard']}. Network access is not allowed "
-                    "(--use-cache); run once with --refresh-fred."
+                    f"FRED cache is stale: {st['hard']}. This step may not download it; refresh "
+                    "it with a run that has network access (with --use-cache, add "
+                    "--refresh-fred)."
                 )
         else:
             try:
@@ -422,6 +431,13 @@ def load_or_fetch_dff(
                     raise StaleRateData(
                         f"FRED cache is stale ({st['hard']}) and the refresh failed: {exc}"
                     ) from exc
+            else:
+                if dates:
+                    after = dff_staleness(path, dates, now)["hard"]
+                    if after:
+                        raise StaleRateData(
+                            f"FRED was downloaded but is still insufficient: {after}"
+                        )
     return load_dff(path)
 
 
