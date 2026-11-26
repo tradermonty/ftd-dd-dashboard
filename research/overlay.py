@@ -384,13 +384,23 @@ def dff_staleness(path: Path, dates: Sequence[str], now: datetime | None = None)
     return out
 
 
-def _write_dff(path: Path, text: str) -> None:
+def _write_dff(path: Path, text: str, dates: Sequence[str] | None = None,
+               keep_if_short: bool = False) -> bool:
+    """Write a FRED download over `path`; return False when it was not used.
+
+    With `dates`, the download is checked before it replaces anything: when it does not cover
+    the rate the last return needs and `keep_if_short` is set (the current file is sufficient),
+    the current file is kept and the download discarded."""
     if "DFF" not in (text.splitlines() or [""])[0]:
         raise ValueError("unexpected FRED response (no DFF header)")
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
+    if dates and keep_if_short and dff_staleness(tmp, dates)["hard"]:
+        tmp.unlink()
+        return False
     tmp.replace(path)
+    return True
 
 
 def load_or_fetch_dff(
@@ -425,7 +435,9 @@ def load_or_fetch_dff(
                 )
         else:
             try:
-                _write_dff(path, (fetch or _http_text)(FRED_URL))
+                # only an insufficient cache may be replaced by a download that is still short
+                _write_dff(path, (fetch or _http_text)(FRED_URL), dates,
+                           keep_if_short=not st["hard"])
             except (OSError, ValueError) as exc:
                 if st["hard"]:
                     raise StaleRateData(

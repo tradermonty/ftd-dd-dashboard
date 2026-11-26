@@ -365,6 +365,18 @@ def test_a_refresh_that_is_still_insufficient_fails_like_the_offline_path(tmp_pa
     assert "(--use-cache)" not in str(err.value) and "--refresh-fred" in str(err.value)
 
 
+def test_a_short_download_does_not_replace_a_sufficient_but_old_file(tmp_path):
+    """A refresh triggered only by the file's age must not swap a good cache for a worse one."""
+    p = tmp_path / "fred_DFF.csv"
+    write_dff(p, "2026-11-05")
+    old = (NOW - timedelta(days=5)).timestamp()
+    os.utime(p, (old, old))
+    before = p.read_text()
+    rows = overlay.load_or_fetch_dff(p, fake_fred("2026-10-30"), dates=SESSIONS, now=NOW)
+    assert p.read_text() == before and rows[-1][0] == "2026-11-05"
+    assert not p.with_name(p.name + ".tmp").exists()
+
+
 def test_failed_refresh_of_an_insufficient_file_is_an_error_not_a_silent_keep(tmp_path):
     p = tmp_path / "fred_DFF.csv"
     write_dff(p, "2026-11-03")
