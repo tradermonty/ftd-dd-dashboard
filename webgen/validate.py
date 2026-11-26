@@ -40,12 +40,12 @@ import json
 import os
 import re
 import subprocess
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 from engine import fetch
 from research import freeze as freeze_mod
-from research import recheck
+from research import overlay, recheck
 from research.split import TEST_END
 from webgen import dictionary, facts, layout, pages
 
@@ -55,7 +55,8 @@ MAX_HISTORICAL_CHANGES = 5  # plan Q3: start with 5 and revisit while operating
 DEFAULT_UPSTREAM = Path(
     os.environ.get("CTS_CHECKOUT", Path.home() / "PycharmProjects" / "claude-trading-skills")
 )
-RATE_FILL_FAIL_BUSINESS_DAYS = 3  # more business days of carried-forward FRED rate is a FAIL
+# more business days of carried-forward FRED rate is a FAIL; the same limit the loader uses
+RATE_FILL_FAIL_BUSINESS_DAYS = overlay.RATE_FILL_MAX_BUSINESS_DAYS
 
 # Event identity and the columns that are fixed once an event exists. Columns that evolve
 # with time (invalidation dates / flags, removal reasons, a DD's expires_on, which stays blank
@@ -559,13 +560,8 @@ def _check_grid_freeze(
     )
 
 
-def _weekdays_between(start: str, end: str) -> int:
-    """Weekdays in the half-open range (start, end]; 0 when end <= start."""
-    d, n, stop = date.fromisoformat(start), 0, date.fromisoformat(end)
-    while d < stop:
-        d += timedelta(days=1)
-        n += d.weekday() < 5
-    return n
+# The loader (research.overlay.dff_staleness) counts the carried-forward days the same way.
+_weekdays_between = overlay.weekdays_between
 
 
 def _check_rate_data(run: Path) -> dict:

@@ -350,9 +350,21 @@ class StaleRateData(RuntimeError):
 DFF_MAX_AGE_DAYS = 3  # a cache file older than this is refreshed when the network is allowed
 
 
+RATE_FILL_MAX_BUSINESS_DAYS = 3  # FRED publication lag tolerated by carrying the rate forward
+
+
 def rate_needed_through(dates: Sequence[str]) -> str:
     """Date of the FRED observation the last return of `dates` needs (see dff_staleness)."""
     return dates[-3] if len(dates) >= 3 else dates[0]
+
+
+def weekdays_between(start: str, end: str) -> int:
+    """Weekdays in the half-open range (start, end]; 0 when end <= start."""
+    d, n, stop = date.fromisoformat(start), 0, date.fromisoformat(end)
+    while d < stop:
+        d += timedelta(days=1)
+        n += d.weekday() < 5
+    return n
 
 
 def dff_staleness(path: Path, dates: Sequence[str], now: datetime | None = None) -> dict:
@@ -373,14 +385,23 @@ def dff_staleness(path: Path, dates: Sequence[str], now: datetime | None = None)
     last_obs = rows[-1][0] if rows else None
     out["last_observation"] = last_obs
     need = rate_needed_through(dates)
-    if last_obs is None or last_obs < need:
-        out["hard"] = (
-            f"the last FRED observation ({last_obs}) is earlier than {need}, the date of the "
-            "rate the last return of the price data needs"
-        )
+    soft = []
+    if last_obs is None:
+        out["hard"] = "the FRED file has no observations"
+    elif last_obs < need:
+        gap = weekdays_between(last_obs, need)
+        if gap > RATE_FILL_MAX_BUSINESS_DAYS:
+            out["hard"] = (
+                f"the last FRED observation ({last_obs}) is {gap} business days before {need}, "
+                f"the date of the rate the last return of the price data needs (more than "
+                f"{RATE_FILL_MAX_BUSINESS_DAYS} cannot be carried forward)"
+            )
+        else:  # within the publication lag: usable (the rate_data gate WARNs), but refresh
+            soft.append(f"the rate for {need} is carried forward over {gap} business day(s)")
     age = ((now or datetime.now(UTC)) - datetime.fromtimestamp(path.stat().st_mtime, UTC)).days
     if age > DFF_MAX_AGE_DAYS:
-        out["soft"] = f"{path.name} was last written {age} days ago"
+        soft.append(f"{path.name} was last written {age} days ago")
+    out["soft"] = "; ".join(soft) or None
     return out
 
 
@@ -396,9 +417,12 @@ def _write_dff(path: Path, text: str, dates: Sequence[str] | None = None,
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
-    if dates and keep_if_short and dff_staleness(tmp, dates)["hard"]:
-        tmp.unlink()
-        return False
+    if dates and keep_if_short:
+        new_rows, old_rows = load_dff(tmp), (load_dff(path) if path.exists() else [])
+        shorter = bool(old_rows) and (not new_rows or new_rows[-1][0] < old_rows[-1][0])
+        if shorter or dff_staleness(tmp, dates)["hard"]:
+            tmp.unlink()  # the current file covers more: keep it
+            return False
     tmp.replace(path)
     return True
 

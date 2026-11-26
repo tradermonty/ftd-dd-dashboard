@@ -322,12 +322,12 @@ def test_fred_file_older_than_three_days_is_refreshed_when_the_network_is_allowe
 
 def test_stale_fred_under_use_cache_fails_with_a_clear_message(tmp_path):
     p = tmp_path / "fred_DFF.csv"
-    write_dff(p, "2026-11-03")
+    write_dff(p, "2026-10-29")  # 4 business days short of 2026-11-04
     with pytest.raises(overlay.StaleRateData) as err:
         overlay.load_or_fetch_dff(
             p, lambda u: pytest.fail("network"), dates=SESSIONS, allow_network=False, now=NOW
         )
-    assert "--refresh-fred" in str(err.value) and "2026-11-03" in str(err.value)
+    assert "--refresh-fred" in str(err.value) and "2026-10-29" in str(err.value)
     # a merely old file whose observations still cover the data is accepted offline
     write_dff(p, "2026-11-05")
     os.utime(p, ((NOW - timedelta(days=9)).timestamp(),) * 2)
@@ -350,13 +350,38 @@ def test_fred_file_covering_the_rate_the_last_return_needs_is_enough(tmp_path):
     assert rows[-1][0] == "2026-11-04"
 
 
+def test_up_to_three_business_days_of_carried_forward_rate_are_accepted(tmp_path):
+    """plan.md §3.7 / rate_data gate: up to 3 business days of carry-forward is a WARN, so the
+    loader must accept it too (it used to stop on the first missing day, so the WARN tier of
+    the gate could never be reached). More than 3 is still a hard stop."""
+    p = tmp_path / "fred_DFF.csv"
+    write_dff(p, "2026-10-30")  # 3 business days before 2026-11-04 (= dates[-3])
+    st = overlay.dff_staleness(p, SESSIONS, now=datetime.now(UTC))
+    assert st["hard"] is None and "carried forward" in (st["soft"] or "")
+    assert overlay.load_or_fetch_dff(
+        p, lambda u: pytest.fail("network"), dates=SESSIONS, allow_network=False,
+        now=datetime.now(UTC),
+    )[-1][0] == "2026-10-30"
+    # with the network allowed, a carried-forward rate is refreshed
+    rows = overlay.load_or_fetch_dff(p, fake_fred("2026-11-05"), dates=SESSIONS,
+                                     now=datetime.now(UTC))
+    assert rows[-1][0] == "2026-11-05"
+    write_dff(p, "2026-10-29")  # 4 business days short
+    assert overlay.dff_staleness(p, SESSIONS, now=datetime.now(UTC))["hard"]
+
+
+def test_the_gate_and_the_loader_use_the_same_carry_forward_limit():
+    assert validate.RATE_FILL_FAIL_BUSINESS_DAYS == overlay.RATE_FILL_MAX_BUSINESS_DAYS == 3
+    assert overlay.weekdays_between("2026-10-30", "2026-11-04") == 3
+
+
 def test_a_refresh_that_is_still_insufficient_fails_like_the_offline_path(tmp_path):
     """Network and offline paths must agree: a download that still lacks dates[-3] is an error."""
     p = tmp_path / "fred_DFF.csv"
-    write_dff(p, "2026-11-02")
+    write_dff(p, "2026-10-27")
     with pytest.raises(overlay.StaleRateData) as err:
-        overlay.load_or_fetch_dff(p, fake_fred("2026-11-03"), dates=SESSIONS, now=NOW)
-    assert "2026-11-03" in str(err.value)
+        overlay.load_or_fetch_dff(p, fake_fred("2026-10-29"), dates=SESSIONS, now=NOW)
+    assert "2026-10-29" in str(err.value)
     with pytest.raises(overlay.StaleRateData) as err:
         overlay.load_or_fetch_dff(
             p, lambda u: pytest.fail("network"), dates=SESSIONS, allow_network=False, now=NOW
@@ -379,7 +404,7 @@ def test_a_short_download_does_not_replace_a_sufficient_but_old_file(tmp_path):
 
 def test_failed_refresh_of_an_insufficient_file_is_an_error_not_a_silent_keep(tmp_path):
     p = tmp_path / "fred_DFF.csv"
-    write_dff(p, "2026-11-03")
+    write_dff(p, "2026-10-29")
 
     def boom(url):
         raise OSError("offline")
