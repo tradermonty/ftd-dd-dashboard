@@ -17,8 +17,13 @@ import csv
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+from statistics import median
 
-GAIN_MIN, FTD_GAIN = 0.00995, 0.0125  # 0.00995 keeps days shown as +1.00%
+# Gains are compared in percent rounded to 2 decimals, as the vendored ftd-detector does
+# (rally_tracker: change_pct = round(..., 2); FTD when change_pct >= FTD_GAIN_MINIMUM).
+GAIN_MIN, FTD_GAIN = 1.00, 1.25
+FIELDS = ["index", "date", "rally_day1_date", "rally_day", "kind", "gain_pct",
+          "volume_change_pct", "same_rally_ftd_date", "ret_20d_pct", "ret_60d_pct"]
 DAY_START, DAY_END = 4, 10
 
 
@@ -43,7 +48,7 @@ def near_misses(status: list[dict], events: list[dict]) -> list[dict]:
             day = i - pos[r["rally_day1_date"]] + 1
             if not DAY_START <= day <= DAY_END:
                 continue
-            gain, vol = float(r["pct_change"]), float(r["volume_change"])
+            gain, vol = round(float(r["pct_change"]) * 100, 2), float(r["volume_change"])
             if GAIN_MIN <= gain < FTD_GAIN and vol > 0:
                 kind = "A: gain 1.00-1.25%, volume up"
             elif gain >= FTD_GAIN and vol <= 0:
@@ -57,7 +62,7 @@ def near_misses(status: list[dict], events: list[dict]) -> list[dict]:
             later = ftd_by_rally.get((sym, r["rally_day1_date"]))
             out.append({
                 "index": sym, "date": r["date"], "rally_day1_date": r["rally_day1_date"],
-                "rally_day": day, "kind": kind[0], "gain_pct": round(gain * 100, 2),
+                "rally_day": day, "kind": kind[0], "gain_pct": gain,
                 "volume_change_pct": round(vol * 100, 1),
                 "same_rally_ftd_date": later or "",
                 "ret_20d_pct": None if fwd[20] is None else round(fwd[20] * 100, 2),
@@ -72,7 +77,7 @@ def main(argv: list[str]) -> int:
     rows = near_misses(read(run / "data/daily_status.csv"), read(run / "data/ftd_events.csv"))
     dest.parent.mkdir(parents=True, exist_ok=True)
     with dest.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w = csv.DictWriter(f, fieldnames=FIELDS)  # header even when there is no near miss
         w.writeheader()
         w.writerows(rows)
     print(f"wrote {dest}: {len(rows)} near misses")
@@ -89,12 +94,13 @@ def main(argv: list[str]) -> int:
                 continue
             seen.add(x["rally_day1_date"])
             uniq.append(x)
-        r20 = sorted(x["ret_20d_pct"] for x in uniq if x["ret_20d_pct"] is not None)
-        r60 = sorted(x["ret_60d_pct"] for x in uniq if x["ret_60d_pct"] is not None)
-        if r20:
+        r20 = [x["ret_20d_pct"] for x in uniq if x["ret_20d_pct"] is not None]
+        r60 = [x["ret_60d_pct"] for x in uniq if x["ret_60d_pct"] is not None]
+        if uniq:
+            m20 = f"{median(r20):+.2f}%" if r20 else "n/a"
+            m60 = f"{median(r60):+.2f}%" if r60 else "n/a"
             print(f"   rallies without FTD but with a near miss: {len(uniq)}; median 20d "
-                  f"{r20[len(r20) // 2]:+.2f}%, 60d {r60[len(r60) // 2]:+.2f}%; "
-                  f"60d > +5%: {sum(1 for v in r60 if v > 5)} of {len(r60)}")
+                  f"{m20}, 60d {m60}; 60d > +5%: {sum(1 for v in r60 if v > 5)} of {len(r60)}")
     return 0
 
 
