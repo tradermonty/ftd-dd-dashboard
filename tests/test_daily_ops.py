@@ -103,6 +103,27 @@ def test_retention_survives_a_malformed_validation_json_and_a_symlinked_run(tmp_
     assert (outside / "screens").is_dir()
 
 
+def test_publish_uses_one_clock_for_fetch_and_validation(tmp_path, monkeypatch):
+    """Fetch and the latest_date gate must agree on 'now': a run that starts before the
+    16:30 ET bar is final and validates after it would otherwise fail latest_date."""
+    seen = {}
+
+    def gen(run_dir, *, now=None, **_):
+        seen["generate"] = now
+        raise RuntimeError("stop after recording the clock")
+
+    real = validate.validate_run
+
+    def spy(run_dir, *, now=None, **kw):
+        seen["validate"] = now
+        return real(run_dir, now=now, **kw)
+
+    monkeypatch.setattr(publish.validate, "validate_run", spy)
+    publish.publish(tmp_path / "build", generate_fn=gen, check_site=False, prune_runs=False,
+                    logs_dir=tmp_path / "logs")
+    assert seen["generate"] is not None and seen["generate"] == seen["validate"]
+
+
 def test_drop_other_screens_keeps_only_the_given_runs(tmp_path):
     build = tmp_path / "build"
     a, b = make_run(build, 2, "PASS"), make_run(build, 1, "PASS")

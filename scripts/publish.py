@@ -238,7 +238,11 @@ def publish(
     retention rules of engine.retention afterwards. `logs_dir`: where the NEEDS_REVIEW message
     is also written."""
     build_root = Path(build_root)
-    run_dir = build_root / "runs" / (run_name or default_run_name())
+    # One clock for the whole run: fetch resolves the latest final session from it and the
+    # latest_date gate re-derives it, so they must not read the time separately (a run that
+    # starts before 16:30 ET and validates after it would fail with sufficient data).
+    now = now or datetime.now(UTC)
+    run_dir = build_root / "runs" / (run_name or default_run_name(now))
     run_dir.parent.mkdir(parents=True, exist_ok=True)
     run_dir.mkdir()  # FileExistsError: a run directory is never reused
 
