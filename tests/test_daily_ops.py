@@ -82,6 +82,27 @@ def test_retention_never_deletes_the_current_target_even_if_it_is_old_and_failed
     assert cur.exists()
 
 
+def test_retention_survives_a_malformed_validation_json_and_a_symlinked_run(tmp_path):
+    """Retention runs after build/current was repointed: a bad entry must not crash it."""
+    build = tmp_path / "build"
+    keep = make_run(build, 0.1, "PASS")
+    point_current(build, keep)
+    bad = make_run(build, 9, None)
+    (bad / "validation.json").write_text("[]", encoding="utf-8")  # valid JSON, not an object
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    (outside / "keep.txt").write_text("x", encoding="utf-8")
+    link = build / "runs" / name_of(10)
+    link.symlink_to(outside, target_is_directory=True)
+    assert retention.run_status(bad) == "NONE"
+    deleted = retention.prune(build, now=NOW)  # must not raise
+    assert bad.name in deleted and link.name not in deleted
+    assert (outside / "keep.txt").exists() and link.is_symlink()
+    (outside / "screens").mkdir()
+    assert retention.drop_other_screens(build, keep) == []  # a symlinked run is left alone
+    assert (outside / "screens").is_dir()
+
+
 def test_drop_other_screens_keeps_only_the_given_runs(tmp_path):
     build = tmp_path / "build"
     a, b = make_run(build, 2, "PASS"), make_run(build, 1, "PASS")

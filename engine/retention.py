@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -31,9 +32,10 @@ def run_time(name: str) -> datetime | None:
 def run_status(run: Path) -> str:
     """PASS, FAIL, or NONE when there is no readable validation.json."""
     try:
-        return json.loads((Path(run) / "validation.json").read_text(encoding="utf-8"))["status"]
-    except (OSError, ValueError, KeyError):
+        status = json.loads((Path(run) / "validation.json").read_text(encoding="utf-8"))["status"]
+    except (OSError, ValueError, KeyError, TypeError):  # TypeError: JSON that is not an object
         return "NONE"
+    return status if isinstance(status, str) else "NONE"
 
 
 def plan(
@@ -49,7 +51,10 @@ def plan(
         return []
     current = Path(build_root) / "current"
     target = current.resolve() if current.is_symlink() else None
-    runs = sorted(d for d in runs_dir.iterdir() if d.is_dir() and run_time(d.name))
+    # A symlink under runs/ is never a run this tool created: leave it (and its target) alone.
+    runs = sorted(
+        d for d in runs_dir.iterdir() if d.is_dir() and not d.is_symlink() and run_time(d.name)
+    )
     passed = [d for d in runs if run_status(d) == "PASS"]
     keep = set(passed[-keep_pass:]) if keep_pass > 0 else set()
     doomed = []
@@ -74,11 +79,19 @@ def prune(
     keep_pass: int = KEEP_PASS,
     failed_days: int = FAILED_DAYS,
 ) -> list[str]:
-    """Delete what `plan` lists and return the names of the deleted runs."""
-    doomed = plan(build_root, now, keep_pass, failed_days)
-    for d in doomed:
-        shutil.rmtree(d)
-    return [d.name for d in doomed]
+    """Delete what `plan` lists and return the names of the deleted runs.
+
+    Called after build/current was repointed, so a run that cannot be deleted is skipped (it
+    is retried on the next run) instead of turning a published run into a failed exit."""
+    deleted = []
+    for d in plan(build_root, now, keep_pass, failed_days):
+        try:
+            shutil.rmtree(d)
+        except OSError as exc:
+            print(f"retention: could not delete {d.name}: {exc}", file=sys.stderr)
+            continue
+        deleted.append(d.name)
+    return deleted
 
 
 def drop_other_screens(build_root: Path, keep: Path) -> list[str]:
@@ -89,7 +102,13 @@ def drop_other_screens(build_root: Path, keep: Path) -> list[str]:
         return removed
     for d in runs_dir.iterdir():
         s = d / "screens"
-        if d.is_dir() and d.resolve() != Path(keep).resolve() and s.is_dir():
-            shutil.rmtree(s)
+        if d.is_symlink() or not d.is_dir() or d.resolve() == Path(keep).resolve():
+            continue
+        if s.is_dir() and not s.is_symlink():
+            try:
+                shutil.rmtree(s)
+            except OSError as exc:
+                print(f"retention: could not remove {d.name}/screens: {exc}", file=sys.stderr)
+                continue
             removed.append(d.name)
     return removed
