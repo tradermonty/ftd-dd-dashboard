@@ -1,0 +1,18 @@
+.env
+build/
+data/raw/
+.venv
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+logs/
+# FMP-derived data must not be committed (FMP terms 2.2.2 / 2.6.1, docs/plan.md R7):
+# the test fixture is real FMP bars; rebuild it locally with scripts/make_fixtures.py
+tests/fixtures/bars.json
+# task outputs may hold FMP-derived numbers
+tasks/output/
+.DS_Store
+# local task tickets (task-runner); development-only, not for GitHub
+tasks/

@@ -1,0 +1,41 @@
+{
+  "files": [
+    {
+      "dest": "vendor/ftd_detector/rally_tracker.py",
+      "sha256": "593aa681b28b259669a06a40179b967fbfd0e4889a939d8d3af778f7627f49b6",
+      "source": "skills/ftd-detector/scripts/rally_tracker.py"
+    },
+    {
+      "dest": "vendor/ftd_detector/post_ftd_monitor.py",
+      "sha256": "fe5979de2b691087178a4efe4af4790c2c55b32ead540e823b20870e3560cd5b",
+      "source": "skills/ftd-detector/scripts/post_ftd_monitor.py"
+    },
+    {
+      "dest": "vendor/ibd_dd/distribution_day_tracker.py",
+      "sha256": "e5657e34da3942cfcd4b0ddf026665dd8dc780ac9b35135edcdc6d2ddc8080aa",
+      "source": "skills/ibd-distribution-day-monitor/scripts/distribution_day_tracker.py"
+    },
+    {
+      "dest": "vendor/ibd_dd/models.py",
+      "sha256": "5f3e810fb0ac8af2413cdac262d15e6701ce3c2f38289608738d1d2780099075",
+      "source": "skills/ibd-distribution-day-monitor/scripts/models.py"
+    },
+    {
+      "dest": "vendor/ibd_dd/history_utils.py",
+      "sha256": "840789dec968d921b033cb461597f0c62fd5d3d4e92796af7b2b472388c36dfe",
+      "source": "skills/ibd-distribution-day-monitor/scripts/history_utils.py"
+    },
+    {
+      "dest": "vendor/ibd_dd/risk_classifier.py",
+      "sha256": "c6c3b83bd6aa1cdc715a2f524e9f8b06fc99a92e527f2d310bbd0566a10af812",
+      "source": "skills/ibd-distribution-day-monitor/scripts/risk_classifier.py"
+    },
+    {
+      "dest": "vendor/ibd_dd/math_utils.py",
+      "sha256": "386ef2784f6dbbaa358bd905640fa129b69e25edb5969c0a64a6f2b2c8d029a1",
+      "source": "skills/ibd-distribution-day-monitor/scripts/math_utils.py"
+    }
+  ],
+  "ref": "a1d65fd4500051e267863a7d2229cf66d5f5fed5",
+  "source_repo": "git@github.com-tradermonty:tradermonty/claude-trading-skills.git"
+}

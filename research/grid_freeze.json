@@ -1,0 +1,71 @@
+{
+  "pre_registered": "2026-11-07",
+  "frozen_on": "2026-11-07",
+  "frozen_at_utc": "2026-11-08T04:06:20Z",
+  "frozen_at_source": "modification time of this file when the timestamp field was added (2026-11-07 review); the file was not rewritten between its creation and then",
+  "grid_sha256": {
+    "selection": "cec47129cd2245199ab64a9c7ce1c8ac266d5acfa87ad357c827761f9d392d2e",
+    "overlay": "7a93f6ddb1e6c79c62c76c00ce5fde8098289fde9ed5e7a361113c6b230e2aea"
+  },
+  "history": [],
+  "note": "variant grids hashed from research.variants / research.overlay",
+  "provenance": {
+    "rule": "runs whose name (UTC start time) is earlier than frozen_at_utc",
+    "frozen_at_utc": "2026-11-08T04:06:20Z",
+    "files": {
+      "selection": {
+        "file": "research/variants.csv",
+        "n_runs": 4,
+        "first_run": "20261108T032834Z",
+        "runs": [
+          {
+            "run": "20261108T032834Z",
+            "sha256": "3f2cba3d2dc53cf30e6a84c629f072a0b90fbb15e77320363a96a9643d4a42d9",
+            "rows_sha256": "c773ec1918e8c9cf9ce599879f726254aa5119e4dafdf041f8a7410bdbb0ae7b"
+          },
+          {
+            "run": "20261108T034158Z",
+            "sha256": "3f2cba3d2dc53cf30e6a84c629f072a0b90fbb15e77320363a96a9643d4a42d9",
+            "rows_sha256": "c773ec1918e8c9cf9ce599879f726254aa5119e4dafdf041f8a7410bdbb0ae7b"
+          },
+          {
+            "run": "20261108T034340Z",
+            "sha256": "3f2cba3d2dc53cf30e6a84c629f072a0b90fbb15e77320363a96a9643d4a42d9",
+            "rows_sha256": "c773ec1918e8c9cf9ce599879f726254aa5119e4dafdf041f8a7410bdbb0ae7b"
+          },
+          {
+            "run": "20261108T040506Z",
+            "sha256": "6a2f7a0c5f08025d361596d3ffffbb513ab37c667abeeef58100737188d69cbf",
+            "rows_sha256": "c773ec1918e8c9cf9ce599879f726254aa5119e4dafdf041f8a7410bdbb0ae7b"
+          }
+        ],
+        "identical_bytes": false,
+        "identical_rows": true
+      },
+      "overlay": {
+        "file": "research/overlay_variants.csv",
+        "n_runs": 3,
+        "first_run": "20261108T034158Z",
+        "runs": [
+          {
+            "run": "20261108T034158Z",
+            "sha256": "adbd2c53ab242afa4f5d25faaeea3e72cffbe8b1b4f4e533cdccc3c86e7fe498",
+            "rows_sha256": "a8912c27d7638d567390a87fd762b7c9e4aef4ac03e51862908fff39d6418117"
+          },
+          {
+            "run": "20261108T034340Z",
+            "sha256": "adbd2c53ab242afa4f5d25faaeea3e72cffbe8b1b4f4e533cdccc3c86e7fe498",
+            "rows_sha256": "a8912c27d7638d567390a87fd762b7c9e4aef4ac03e51862908fff39d6418117"
+          },
+          {
+            "run": "20261108T040506Z",
+            "sha256": "adbd2c53ab242afa4f5d25faaeea3e72cffbe8b1b4f4e533cdccc3c86e7fe498",
+            "rows_sha256": "a8912c27d7638d567390a87fd762b7c9e4aef4ac03e51862908fff39d6418117"
+          }
+        ],
+        "identical_bytes": true,
+        "identical_rows": true
+      }
+    }
+  }
+}

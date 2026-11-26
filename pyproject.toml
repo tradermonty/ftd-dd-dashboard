@@ -1,0 +1,40 @@
+[project]
+name = "ftd-dd-dashboard"
+version = "0.1.0"
+description = "Local-only FTD / Distribution Day history dashboard (engine)"
+requires-python = ">=3.11"
+dependencies = [
+    "exchange-calendars>=4.5,<5",
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "pyyaml>=6",
+    "pandas>=2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["engine", "research", "webgen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["vendor"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/build_preview.py" = ["E501"]  # embedded HTML/JS template
+"research/report.py" = ["E501"]  # Japanese HTML text
+"webgen/pages.py" = ["E501"]  # embedded HTML / long f-strings
+"scripts/check_site.py" = ["E501"]  # embedded JS
