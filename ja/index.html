@@ -456,7 +456,7 @@ function ddHide(){ $("#ddChart .tip").classList.remove("show"); ddGeom?.cross.se
 /* ---------- FTD story: plays by itself, one button to pause / replay ---------- */
 let story=null, stepIdx=0, timer=null, playing=false;
 function buildStory(){
-  const I=M.indices[cur],S=I.series,f=I.last_ftd, at=d=>S.findIndex(s=>s.d===d);
+  const I=M.indices[cur],S=I.story_series||I.series,f=I.last_ftd, at=d=>S.findIndex(s=>s.d===d);
   const iLow=at(f.swing_low_date),i1=at(f.rally_day1_date),iF=at(f.ftd_date),iEnd=f.end_date?at(f.end_date):-1;
   if(iLow<0||i1<0||iF<0) return null;
   // first close below the FTD-day low after the FTD (and before the uptrend ended): "under pressure"
@@ -539,7 +539,7 @@ function play(){ if(!story) return; if(stepIdx>=story.steps.length-1) stepIdx=0;
 function pause(){ playing=false; clearInterval(timer); timer=null; renderStory(); setBtn(); }
 $("#play").onclick=()=>playing?pause():play();
 function renderFTD(autoplay){
-  playing=false; clearInterval(timer); timer=null; story=buildStory(); stepIdx=0;
+  playing=false; clearInterval(timer); timer=null; story=buildStory(); stepIdx=0; $("#ftd").hidden=!story; if(!story) return;
   const f=M.indices[cur].last_ftd; $("#exampleTag").textContent=`過去の実例：${NAMES[cur]} ${md(f.ftd_date)}（いまの状況ではありません）`;
   if(reduce){ stepIdx=story?story.steps.length-1:0; renderStory(); setBtn(); return; }
   renderStory(); setBtn(); if(autoplay) play();
