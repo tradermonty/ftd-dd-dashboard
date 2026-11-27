@@ -4,15 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Follow-Through Day &amp; Distribution Day Dashboard</title>
-<link rel="stylesheet" href="assets/style.css">
+<script>
+// Pick the language from the browser: Japanese browsers get /ja/, everyone else /en/.
+// Nothing is stored; the EN / 日本語 switch on every page changes language at any time.
+(function () {
+  var langs = navigator.languages || [navigator.language || ""];
+  var ja = langs.length && /^ja\b/i.test(langs[0]);
+  location.replace((ja ? "ja" : "en") + "/index.html" + location.hash);
+})();
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=en/index.html"></noscript>
 </head>
 <body><div role="note" style="position:sticky;top:0;z-index:9999;background:#fbb315;color:#191919;font:600 13px/1.4 -apple-system,'Hiragino Sans',sans-serif;padding:8px 12px;text-align:center">サンプルデータ：作り物の数字で動作を試す公開テストです。実際の相場ではありません。</div>
-<main class="wrap chooser">
-<h1>Follow-Through Day &amp; Distribution Day Dashboard</h1>
-<p class="lead">言語を選んでください。<br>Choose a language.</p>
-<p class="choose"><a class="btn" href="ja/index.html">日本語</a> <a class="btn" href="en/index.html">English</a></p>
-<p class="notice">このサイトは個人が手元で使うためのものです。FMP の価格データは再配布できないため、公開や共有はしないでください。<br>This site is for personal local use. FMP price data must not be redistributed, so do not publish or share it.</p>
-<p class="muted">Data through 2026-11-25. Generated 2026-11-27T15:06:31Z. Decision code version a1d65fd450.</p>
-</main>
+<p><a href="en/index.html">English</a> · <a href="ja/index.html" lang="ja">日本語</a></p>
 </body>
 </html>
