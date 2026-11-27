@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data | FTD / DD Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body><div role="note" style="position:sticky;top:0;z-index:9999;background:#fbb315;color:#191919;font:600 13px/1.4 -apple-system,'Hiragino Sans',sans-serif;padding:8px 12px;text-align:center">Sample data: a public test built from made-up numbers. This is not the real market.</div>
+<header class="top">
+<div class="wrap">
+<div class="brand">Follow-Through Day &amp; Distribution Day Dashboard</div>
+<nav><a href="index.html">Home</a><a href="research.html">Research</a><a href="chart.html">Chart</a><a href="events.html">Events</a><a href="definitions.html">Definitions</a><a href="data.html" class=active>Data</a><a class="lang" href="../ja/data.html">日本語</a></nav>
+</div>
+</header>
+<main class="wrap">
+<h1>Data</h1>
+<div class="callout">This site is for personal local use. FMP price data must not be redistributed, so do not publish or share it. Prices and volumes are FMP data and must not be redistributed. Keep them inside this folder.</div>
+<p class="lead">The files this site is built from. Column meanings and units are in data_dictionary.md.</p>
+<div class="tablewrap"><table><thead><tr><th>File</th><th>Content</th><th>Size</th></tr></thead><tbody><tr><td class="l"><a href="../../data/daily_status.csv">data/daily_status.csv</a></td><td class="num">state of each index, each day</td><td class="num">1,904 KB</td></tr><tr><td class="l"><a href="../../data/ftd_events.csv">data/ftd_events.csv</a></td><td class="num">list of FTDs</td><td class="num">47 KB</td></tr><tr><td class="l"><a href="../../data/distribution_days.csv">data/distribution_days.csv</a></td><td class="num">list of DDs</td><td class="num">262 KB</td></tr><tr><td class="l"><a href="../../data/rally_attempts.csv">data/rally_attempts.csv</a></td><td class="num">list of rally attempts</td><td class="num">63 KB</td></tr><tr><td class="l"><a href="../../data/ftd_outcomes.csv">data/ftd_outcomes.csv</a></td><td class="num">returns after each FTD</td><td class="num">82 KB</td></tr><tr><td class="l"><a href="../../data/dd_bucket_stats.csv">data/dd_bucket_stats.csv</a></td><td class="num">returns by active DD count</td><td class="num">5 KB</td></tr><tr><td class="l"><a href="../../data/risk_level_stats.csv">data/risk_level_stats.csv</a></td><td class="num">returns by risk level</td><td class="num">5 KB</td></tr><tr><td class="l"><a href="../../data/data_issues.csv">data/data_issues.csv</a></td><td class="num">record of volume anomalies</td><td class="num">0 KB</td></tr><tr><td class="l"><a href="../../data/summary.json">data/summary.json</a></td><td class="num">counts, data range, decision code version</td><td class="num">4 KB</td></tr><tr><td class="l"><a href="../../data/data_dictionary.md">data/data_dictionary.md</a></td><td class="num">column meanings and units (English)</td><td class="num">22 KB</td></tr><tr><td class="l"><a href="../../research/variants.csv">research/variants.csv</a></td><td class="num">research: all variants, design period</td><td class="num">86 KB</td></tr><tr><td class="l"><a href="../../research/test_results.csv">research/test_results.csv</a></td><td class="num">research: test period results</td><td class="num">3 KB</td></tr><tr><td class="l"><a href="../../research/selected.json">research/selected.json</a></td><td class="num">research: periods, pick rules, picked variants</td><td class="num">28 KB</td></tr><tr><td class="l"><a href="../../research/report.html">research/report.html</a></td><td class="num">research: the first report (Japanese)</td><td class="num">42 KB</td></tr><tr><td class="l"><a href="../../research/overlay_variants.csv">research/overlay_variants.csv</a></td><td class="num">research R2: all variants, design period</td><td class="num">33 KB</td></tr><tr><td class="l"><a href="../../research/overlay_test_results.csv">research/overlay_test_results.csv</a></td><td class="num">research R2: test period results</td><td class="num">5 KB</td></tr><tr><td class="l"><a href="../../research/overlay_selected.json">research/overlay_selected.json</a></td><td class="num">research R2: periods, pick rule, picked variant and levered periods</td><td class="num">74 KB</td></tr><tr><td class="l"><a href="../../site/key_facts.json">site/key_facts.json</a></td><td class="num">numbers behind the key points, recomputed and checked by the publish gate</td><td class="num">5 KB</td></tr><tr><td class="l"><a href="../../validation.json">validation.json</a></td><td class="num">pre-publish check result and hash of every file</td><td class="num">-</td></tr></tbody></table></div>
+<h2>Units</h2>
+<ul><li>Columns ending in _pct in ftd_events.csv and distribution_days.csv are percent values. 1.5 means 1.5%.</li><li>Changes in daily_status.csv, outcome columns and most research columns are fractions: 0.015 means 1.5%. In the research files correction_pct and min_gain are percent values (3 means 3%), while min_decline_frac is a fraction (-0.002 means -0.2%). It was called min_decline_pct before and was renamed because it is a fraction.</li><li>pct_change means different things in two files. In distribution_days.csv it is a percent value: -0.5 is -0.5%. In daily_status.csv it is a fraction: -0.005 is -0.5%.</li><li>Dates are ISO 8601 session dates. Booleans are True and False, and an empty cell means not applicable.</li></ul>
+<p><a href="../../data/data_dictionary.md">Open data_dictionary.md</a></p>
+<h2>For AI agents</h2>
+<p>llms.txt at the site root lists the files and the order to read them. <a href="../llms.txt">llms.txt</a></p>
+<h2>Range</h2>
+<p>Judgments cover 2000-01-03 to 2026-11-25. Data is fetched from 1999-06-01 as a run-up.</p>
+
+</main>
+<footer class="wrap foot">
+<p class="notice">This site is for personal local use. FMP price data must not be redistributed, so do not publish or share it.</p>
+<p>FTD and DD here are judged by the rules of the claude-trading-skills code. They are not official IBD signals.</p>
+<p class="muted">Data through 2026-11-25. Generated 2026-11-27T15:06:31Z. Decision code version a1d65fd450.</p>
+</footer>
+</body>
+</html>

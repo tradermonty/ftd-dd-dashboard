@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>今日の状態 | FTD・DD ダッシュボード</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body><div role="note" style="position:sticky;top:0;z-index:9999;background:#fbb315;color:#191919;font:600 13px/1.4 -apple-system,'Hiragino Sans',sans-serif;padding:8px 12px;text-align:center">サンプルデータ：作り物の数字で動作を試す公開テストです。実際の相場ではありません。</div>
+<header class="top">
+<div class="wrap">
+<div class="brand">Follow-Through Day &amp; Distribution Day Dashboard</div>
+<nav><a href="index.html" class=active>トップ</a><a href="research.html">研究</a><a href="chart.html">チャート</a><a href="events.html">イベント一覧</a><a href="definitions.html">定義</a><a href="data.html">データ</a><a class="lang" href="../en/index.html">English</a></nav>
+</div>
+</header>
+<main class="wrap">
+<h1>今日の状態</h1>
+<p class="lead">2026-11-25 の引け時点の状態と、過去の検証で分かったことをまとめています。</p>
+<h2>指数ごとの今日の状態</h2><div class="cards">
+<section class="card">
+<h3>S&amp;P 500</h3>
+<p class="muted">2026-11-25 / 終値 6,518.17</p>
+<dl>
+<dt>ディストリビューションデーの危険度</dt><dd><span class="badge lv-HIGH">高い</span></dd>
+<dt>FTD の状態</dt><dd>調整中</dd>
+<dt>反発1日目</dt><dd>-</dd>
+<dt>有効な DD の数 d5 / d15 / d25</dt><dd>2 / 3 / 3</dd>
+<dt>今日は DD か</dt><dd>はい</dd>
+</dl>
+</section>
+<section class="card">
+<h3>ナスダック総合</h3>
+<p class="muted">2026-11-25 / 終値 17,843.57</p>
+<dl>
+<dt>ディストリビューションデーの危険度</dt><dd><span class="badge lv-NORMAL">通常</span></dd>
+<dt>FTD の状態</dt><dd>FTD 確認済み</dd>
+<dt>反発1日目</dt><dd>2026-10-19</dd>
+<dt>有効な DD の数 d5 / d15 / d25</dt><dd>1 / 2 / 2</dd>
+<dt>今日は DD か</dt><dd>いいえ</dd>
+</dl>
+</section>
+</div>
+<p class="muted">危険度は d25 などの有効な DD の数で決まります。d25 は当日とその前の25セッション、合わせて26セッションが対象です。しきい値は定義のページにあります。</p>
+<h2>研究の結論</h2>
+<p>このサイトの中心は、FTD と DD が数字で確かめるとどう見えるかです。以下は研究ページの要点で、数字はすべて今回の計算結果です。</p>
+<ul><li>試した案は全部で114通りです。FTD が24案、DD が90案です。すべて設計期間 2000-01-03 から 2014-12-31 で採点し、基準案と選ばれた案だけを、検証期間 2015-01-02 から 2026-11-06 で一度だけ採点しました。</li><li>設計期間の基準案、S&amp;P 500: FTD の取引は106回で、勝率は36%、損益の中央値は-2.29%でした。投資比率ルールの最大下落は-22.97%で、同じ平均投資比率を保った比較対象の-28.42%より5.45ポイント浅いです。60セッション以内に10%以上下がった割合は、危険度が高いか深刻の日の後で15.20%、それ以外の日の後で19.95%で、前者は後者より4.75ポイント低いです。危険度の4段階で見ると、この割合は段階ごとに一貫した順序で並んでいません。</li><li>設計期間の基準案、ナスダック総合: FTD の取引は157回で、勝率は35%、損益の中央値は-2.33%でした。投資比率ルールの最大下落は-30.75%で、同じ平均投資比率を保った比較対象の-39.25%より8.50ポイント浅いです。60セッション以内に10%以上下がった割合は、危険度が高いか深刻の日の後で24.5%、それ以外の日の後で28.0%で、前者は後者より3.5ポイント低いです。危険度の4段階で見ると、この割合は段階ごとに一貫した順序で並んでいません。</li><li>S&amp;P 500の FTD 売買: スキルの定義どおりの FTD で、検証期間に検出された FTD は85件、取引は85回でした。検出された85件のうち82件は、前後60セッション以内に同じ指数で別の FTD が検出されていて、保有期間が重なります。1単位の資金では全部を持てないので、取引の回数と損益には重なりが含まれています。勝率は24%、1回あたり損益の中央値は-2.26%、平均は-0.07%、プロフィットファクターは0.97です。85回のうち63回は、終値が FTD 当日の安値を割り込んで損切りになりました。</li><li>ナスダック総合の FTD 売買: スキルの定義どおりの FTD で、検証期間に検出された FTD は122件、取引は119回でした。3件は、買ってから60セッション先が検証期間の終わりを超えるため、取引に数えていません。検出された122件のうち120件は、前後60セッション以内に同じ指数で別の FTD が検出されていて、保有期間が重なります。1単位の資金では全部を持てないので、取引の回数と損益には重なりが含まれています。勝率は27%、1回あたり損益の中央値は-2.74%、平均は+0.82%、プロフィットファクターは1.32です。119回のうち85回は、終値が FTD 当日の安値を割り込んで損切りになりました。</li><li>S&amp;P 500の投資比率ルール: 検証期間の年率は5.8%で、買って持ち続けた場合は3.3%でした。最大下落は-29.67%で、持ち続けた場合は-51.0%です。平均投資比率68%を毎日一定に保ち、残りを現金にした比較対象は、年率2.6%、最大下落-37.94%でした。ルールの最大下落は、この比較対象より8.27ポイント浅いです。</li><li>ナスダック総合の投資比率ルール: 検証期間の年率は8.2%で、買って持ち続けた場合は5.5%でした。最大下落は-47.03%で、持ち続けた場合は-68.5%です。平均投資比率70%を毎日一定に保ち、残りを現金にした比較対象は、年率4.4%、最大下落-54.98%でした。ルールの最大下落は、この比較対象より7.95ポイント浅いです。</li><li>S&amp;P 500で60セッション以内に10%以上下がった割合: 検証期間では、危険度が高いか深刻の日の後で23.3%（n=1,858）、それ以外の日の後で17.6%（n=1,062）でした。前者は後者より5.7ポイント高いです。危険度の4段階で見ると、この割合は段階ごとに一貫した順序で並んでいません。</li><li>ナスダック総合で60セッション以内に10%以上下がった割合: 検証期間では、危険度が高いか深刻の日の後で29.4%（n=1,716）、それ以外の日の後で27.0%（n=1,204）でした。前者は後者より2.4ポイント高いです。危険度の4段階で見ると、この割合は段階ごとに一貫した順序で並んでいません。</li><li>設計期間に基準案とは別の案が選ばれた6件のうち、検証期間でも基準案より良かったのは4件でした。良し悪しは、その案を選んだ指標で比べています。</li><li>R2、FTD の後にレバレッジを上乗せする案: S&amp;P 500の検証期間では、年率は選んだ案が3.3%、買い持ちが3.3%、最大下落は選んだ案が-51.9%、買い持ちが-51.0%でした。設計期間では、年率は選んだ案が6.727%で、買い持ちの6.875%より低いです。最大下落は-40.427%で、許容の下限 -44.414% に対して 3.987 ポイントの余裕で通りました。ナスダック総合の検証期間では、年率は選んだ案が9.127%、買い持ちが5.465%、最大下落は選んだ案が-73.164%、買い持ちが-68.480%でした。設計期間では、年率は選んだ案が9.14%で、買い持ちの7.51%より高いです。最大下落は-52.88%で、許容の下限 -56.99% に対して 4.11 ポイントの余裕で通りました。ただし、この検証期間は R2 の設計の前に下見で見ているため、検証外データによる確認ではありません。2026-11-06 より後の新しいセッションが、まだ見ていない期間です。研究であり、売買をすすめるものではありません。</li></ul>
+<p class="muted">検証期間は、条件を選ぶときには見ていない期間です。ただし例外が三つあります。一つ目は同点の決め方で、検証期間の結果を見たあとに定めました。二つ目は R2 で、設計の前に、検証期間を含む期間で下見をしています。三つ目は R で、設計の前に、検証期間を含む全期間の統計を見て背景の節を書いています。詳しくは「事後の変更と固定」の節と、R と R2 の注意の囲みに書いています。基準案の設計期間の結果は、選ぶときの候補に入っていたので、選択にまったく使われていない数字ではありません。基準案が選ばれた案と違うのは、結果から選んだものではなく、スキル自身の定義だという点です。</p>
+<p><a href="research.html">研究の全体を読む</a> / <a href="research.html#caveats">注意点を読む</a> / <a href="definitions.html">定義を読む</a></p>
+<h2>直近のイベント</h2>
+<h3>直近の FTD</h3>
+<div class="tablewrap"><table><thead><tr><th>指数</th><th>ftd_date</th><th>detected_on</th><th>何日目</th><th>上昇率</th><th>無効化</th><th>無効化の日</th></tr></thead><tbody><tr><td class="l">ナスダック総合</td><td class="num">2026-10-26</td><td class="num">2026-10-26</td><td class="num">6</td><td class="num">3.60%</td><td class="num">-</td><td class="num">-</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-10-19</td><td class="num">2026-10-19</td><td class="num">5</td><td class="num">4.04%</td><td class="num">-</td><td class="num">-</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-09-04</td><td class="num">2026-09-04</td><td class="num">5</td><td class="num">1.25%</td><td class="num">はい</td><td class="num">2026-09-17</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-02-10</td><td class="num">2026-02-10</td><td class="num">5</td><td class="num">3.62%</td><td class="num">はい</td><td class="num">2026-02-19</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-02-04</td><td class="num">2026-02-04</td><td class="num">6</td><td class="num">1.40%</td><td class="num">はい</td><td class="num">2026-02-25</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-01-05</td><td class="num">2026-01-05</td><td class="num">6</td><td class="num">1.83%</td><td class="num">いいえ</td><td class="num">-</td></tr></tbody></table></div>
+<h3>直近の DD</h3>
+<div class="tablewrap"><table><thead><tr><th>指数</th><th>日付</th><th>前日比</th><th>出来高の前日比</th><th>期限切れの日</th><th>状態</th></tr></thead><tbody><tr><td class="l">S&P 500</td><td class="num">2026-11-25</td><td class="num">-1.22%</td><td class="num">+31.7%</td><td class="num">2027-01-05 予定</td><td class="num">有効</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-11-19</td><td class="num">-0.88%</td><td class="num">+4.1%</td><td class="num">2026-12-29 予定</td><td class="num">有効</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-11-18</td><td class="num">-2.30%</td><td class="num">+63.8%</td><td class="num">2026-12-28 予定</td><td class="num">有効</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-11-11</td><td class="num">-2.39%</td><td class="num">+28.9%</td><td class="num">2026-12-18 予定</td><td class="num">有効</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-11-11</td><td class="num">-1.56%</td><td class="num">+17.5%</td><td class="num">2026-12-18 予定</td><td class="num">有効</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-11-02</td><td class="num">-0.20%</td><td class="num">+53.0%</td><td class="num">-</td><td class="num">上昇で無効化</td></tr><tr><td class="l">ナスダック総合</td><td class="num">2026-10-29</td><td class="num">-1.16%</td><td class="num">+7.6%</td><td class="num">-</td><td class="num">上昇で無効化</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-10-29</td><td class="num">-1.02%</td><td class="num">+23.7%</td><td class="num">-</td><td class="num">上昇で無効化</td></tr></tbody></table></div>
+<p><a href="events.html">イベント一覧</a> / <a href="chart.html">チャート</a></p>
+</main>
+<footer class="wrap foot">
+<p class="notice">このサイトは個人が手元で使うためのものです。FMP の価格データは再配布できないため、公開や共有はしないでください。</p>
+<p>ここでの FTD と DD は claude-trading-skills のスキルの定義による判定で、IBD 公式のシグナルではありません。</p>
+<p class="muted">データの最終日 2026-11-25。生成 2026-11-27T15:06:31Z。判定コードの版 a1d65fd450。</p>
+</footer>
+</body>
+</html>

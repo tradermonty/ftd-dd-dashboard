@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Today&#x27;s state | FTD / DD Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body><div role="note" style="position:sticky;top:0;z-index:9999;background:#fbb315;color:#191919;font:600 13px/1.4 -apple-system,'Hiragino Sans',sans-serif;padding:8px 12px;text-align:center">Sample data: a public test built from made-up numbers. This is not the real market.</div>
+<header class="top">
+<div class="wrap">
+<div class="brand">Follow-Through Day &amp; Distribution Day Dashboard</div>
+<nav><a href="index.html" class=active>Home</a><a href="research.html">Research</a><a href="chart.html">Chart</a><a href="events.html">Events</a><a href="definitions.html">Definitions</a><a href="data.html">Data</a><a class="lang" href="../ja/index.html">日本語</a></nav>
+</div>
+</header>
+<main class="wrap">
+<h1>Today&#x27;s state</h1>
+<p class="lead">The state as of the 2026-11-25 close, and what the past checks showed.</p>
+<h2>Today&#x27;s state by index</h2><div class="cards">
+<section class="card">
+<h3>S&amp;P 500</h3>
+<p class="muted">2026-11-25 / close 6,518.17</p>
+<dl>
+<dt>Distribution Day risk</dt><dd><span class="badge lv-HIGH">HIGH</span></dd>
+<dt>FTD state</dt><dd>Correction</dd>
+<dt>Rally day 1</dt><dd>-</dd>
+<dt>Active DDs d5 / d15 / d25</dt><dd>2 / 3 / 3</dd>
+<dt>Is today a DD</dt><dd>yes</dd>
+</dl>
+</section>
+<section class="card">
+<h3>Nasdaq Composite</h3>
+<p class="muted">2026-11-25 / close 17,843.57</p>
+<dl>
+<dt>Distribution Day risk</dt><dd><span class="badge lv-NORMAL">NORMAL</span></dd>
+<dt>FTD state</dt><dd>FTD confirmed</dd>
+<dt>Rally day 1</dt><dd>2026-10-19</dd>
+<dt>Active DDs d5 / d15 / d25</dt><dd>1 / 2 / 2</dd>
+<dt>Is today a DD</dt><dd>no</dd>
+</dl>
+</section>
+</div>
+<p class="muted">The risk level comes from active DD counts such as d25, which covers today and the previous 25 sessions, 26 sessions in all. Thresholds are on the Definitions page.</p>
+<h2>Research conclusions</h2>
+<p>The centerpiece of this site is what FTDs and Distribution Days look like when checked with numbers. These are the key points of the Research page; every figure is from this run.</p>
+<ul><li>114 variants were tried: 24 for FTD and 90 for DD. All were scored on the design period 2000-01-03 to 2014-12-31. Only the baseline and the picked variant were scored, once, on the test period 2015-01-02 to 2026-11-06.</li><li>Baseline in the design period, S&amp;P 500: the FTD rule made 106 trades, with a win rate of 36% and a median trade of -2.29%. The exposure rule&#x27;s max drawdown was -22.97%, 5.45 points shallower than the -28.42% of the benchmark holding the same average exposure every day. The share of falls of 10% or more within 60 sessions was 15.20% after HIGH or SEVERE days and 19.95% after the other days, the first 4.75 points lower than the second. Across the four risk levels the share shows no consistent ordering.</li><li>Baseline in the design period, Nasdaq Composite: the FTD rule made 157 trades, with a win rate of 35% and a median trade of -2.33%. The exposure rule&#x27;s max drawdown was -30.75%, 8.50 points shallower than the -39.25% of the benchmark holding the same average exposure every day. The share of falls of 10% or more within 60 sessions was 24.5% after HIGH or SEVERE days and 28.0% after the other days, the first 3.5 points lower than the second. Across the four risk levels the share shows no consistent ordering.</li><li>FTD as a trade, S&amp;P 500: with the skill&#x27;s own FTD rule the test period had 85 FTDs detected and 85 trades. Of the 85 FTDs detected, 82 have another FTD of the same index within 60 sessions before or after, so their holding periods overlap. One unit of capital could not hold them all, so the trade count and the profits include the overlap. Win rate 24%, median trade -2.26%, mean -0.07%, profit factor 0.97. 63 of the 85 trades ended at the stop, a close below the FTD-day low.</li><li>FTD as a trade, Nasdaq Composite: with the skill&#x27;s own FTD rule the test period had 122 FTDs detected and 119 trades. 3 of them did not become a trade, because the 60 sessions after the buy run past the end of the test period. Of the 122 FTDs detected, 120 have another FTD of the same index within 60 sessions before or after, so their holding periods overlap. One unit of capital could not hold them all, so the trade count and the profits include the overlap. Win rate 27%, median trade -2.74%, mean +0.82%, profit factor 1.32. 85 of the 119 trades ended at the stop, a close below the FTD-day low.</li><li>Exposure rule, S&amp;P 500: in the test period CAGR was 5.8% against 3.3% for buy and hold. Max drawdown was -29.67% against -51.0%. A benchmark holding the same average exposure 68% every day, rest in cash, had CAGR 2.6% and max drawdown -37.94%. The rule&#x27;s max drawdown was 8.27 points shallower than that benchmark.</li><li>Exposure rule, Nasdaq Composite: in the test period CAGR was 8.2% against 5.5% for buy and hold. Max drawdown was -47.03% against -68.5%. A benchmark holding the same average exposure 70% every day, rest in cash, had CAGR 4.4% and max drawdown -54.98%. The rule&#x27;s max drawdown was 7.95 points shallower than that benchmark.</li><li>Share of falls of 10% or more within 60 sessions, S&amp;P 500: in the test period it followed 23.3% of elevated-risk days (HIGH or SEVERE; n=1,858) and 17.6% of the other days (n=1,062). The first is 5.7 points higher than the second. Across the four risk levels the share shows no consistent ordering.</li><li>Share of falls of 10% or more within 60 sessions, Nasdaq Composite: in the test period it followed 29.4% of elevated-risk days (HIGH or SEVERE; n=1,716) and 27.0% of the other days (n=1,204). The first is 2.4 points higher than the second. Across the four risk levels the share shows no consistent ordering.</li><li>Of the 6 index-by-evaluation cases where the design period picked something other than the baseline, the pick beat the baseline on the test period in 4. Better is judged on the metric the pick was selected for.</li><li>R2, adding leverage after an FTD: For S&amp;P 500, in the test period the picked variant earned 3.3% against 3.3% for buy and hold, with a max drawdown of -51.9% against -51.0%. In the design period its CAGR was 6.727%, lower than the 6.875% of buy and hold, and its max drawdown of -40.427% passed the limit of -44.414% with a margin of 3.987 points. For Nasdaq Composite, in the test period the picked variant earned 9.127% against 5.465% for buy and hold, with a max drawdown of -73.164% against -68.480%. In the design period its CAGR was 9.14%, higher than the 7.51% of buy and hold, and its max drawdown of -52.88% passed the limit of -56.99% with a margin of 4.11 points. This test period had been seen in a preview before R2 was designed, so it is not a clean out-of-sample check. Sessions after 2026-11-06 are the period nobody has seen yet. This is research, not a trading recommendation.</li></ul>
+<p class="muted">The test period was not used to pick conditions, with three exceptions. First, the tie rule was defined after the test results had been seen. Second, R2&#x27;s test period had been previewed before R2 was designed. Third, research R was designed after statistics over the whole of 2000 to 2026, which include the test period, had been looked at when its background section was written. They are described under post-hoc changes and in the boxes for R and R2. The baseline&#x27;s design-period rows were candidates in the selection, so they are not numbers the selection left untouched. What sets the baseline apart from a pick is that it is the skill&#x27;s own definition and was not chosen from results.</p>
+<p><a href="research.html">Read the full research</a> / <a href="research.html#caveats">Read the caveats</a> / <a href="definitions.html">Read the definitions</a></p>
+<h2>Latest events</h2>
+<h3>Latest FTDs</h3>
+<div class="tablewrap"><table><thead><tr><th>Index</th><th>ftd_date</th><th>detected_on</th><th>Day</th><th>Gain</th><th>Invalidated</th><th>Invalidated on</th></tr></thead><tbody><tr><td class="l">Nasdaq Composite</td><td class="num">2026-10-26</td><td class="num">2026-10-26</td><td class="num">6</td><td class="num">3.60%</td><td class="num">-</td><td class="num">-</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-10-19</td><td class="num">2026-10-19</td><td class="num">5</td><td class="num">4.04%</td><td class="num">-</td><td class="num">-</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-09-04</td><td class="num">2026-09-04</td><td class="num">5</td><td class="num">1.25%</td><td class="num">yes</td><td class="num">2026-09-17</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-02-10</td><td class="num">2026-02-10</td><td class="num">5</td><td class="num">3.62%</td><td class="num">yes</td><td class="num">2026-02-19</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-02-04</td><td class="num">2026-02-04</td><td class="num">6</td><td class="num">1.40%</td><td class="num">yes</td><td class="num">2026-02-25</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-01-05</td><td class="num">2026-01-05</td><td class="num">6</td><td class="num">1.83%</td><td class="num">no</td><td class="num">-</td></tr></tbody></table></div>
+<h3>Latest DDs</h3>
+<div class="tablewrap"><table><thead><tr><th>Index</th><th>Date</th><th>Change</th><th>Volume vs prev</th><th>Expires on</th><th>Status</th></tr></thead><tbody><tr><td class="l">S&P 500</td><td class="num">2026-11-25</td><td class="num">-1.22%</td><td class="num">+31.7%</td><td class="num">2027-01-05 scheduled</td><td class="num">active</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-11-19</td><td class="num">-0.88%</td><td class="num">+4.1%</td><td class="num">2026-12-29 scheduled</td><td class="num">active</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-11-18</td><td class="num">-2.30%</td><td class="num">+63.8%</td><td class="num">2026-12-28 scheduled</td><td class="num">active</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-11-11</td><td class="num">-2.39%</td><td class="num">+28.9%</td><td class="num">2026-12-18 scheduled</td><td class="num">active</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-11-11</td><td class="num">-1.56%</td><td class="num">+17.5%</td><td class="num">2026-12-18 scheduled</td><td class="num">active</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-11-02</td><td class="num">-0.20%</td><td class="num">+53.0%</td><td class="num">-</td><td class="num">invalidated by rally</td></tr><tr><td class="l">Nasdaq Composite</td><td class="num">2026-10-29</td><td class="num">-1.16%</td><td class="num">+7.6%</td><td class="num">-</td><td class="num">invalidated by rally</td></tr><tr><td class="l">S&P 500</td><td class="num">2026-10-29</td><td class="num">-1.02%</td><td class="num">+23.7%</td><td class="num">-</td><td class="num">invalidated by rally</td></tr></tbody></table></div>
+<p><a href="events.html">All events</a> / <a href="chart.html">Chart</a></p>
+</main>
+<footer class="wrap foot">
+<p class="notice">This site is for personal local use. FMP price data must not be redistributed, so do not publish or share it.</p>
+<p>FTD and DD here are judged by the rules of the claude-trading-skills code. They are not official IBD signals.</p>
+<p class="muted">Data through 2026-11-25. Generated 2026-11-27T15:06:31Z. Decision code version a1d65fd450.</p>
+</footer>
+</body>
+</html>

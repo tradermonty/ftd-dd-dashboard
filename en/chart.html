@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chart | FTD / DD Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js" integrity="sha384-cCVCZkAjYNxaYKbM8lsArLznDF/SvMFr1jcZrvOpSTCa0W40ZAdLzHCEulnUa5i7" crossorigin="anonymous"></script>
+</head>
+<body><div role="note" style="position:sticky;top:0;z-index:9999;background:#fbb315;color:#191919;font:600 13px/1.4 -apple-system,'Hiragino Sans',sans-serif;padding:8px 12px;text-align:center">Sample data: a public test built from made-up numbers. This is not the real market.</div>
+<header class="top">
+<div class="wrap">
+<div class="brand">Follow-Through Day &amp; Distribution Day Dashboard</div>
+<nav><a href="index.html">Home</a><a href="research.html">Research</a><a href="chart.html" class=active>Chart</a><a href="events.html">Events</a><a href="definitions.html">Definitions</a><a href="data.html">Data</a><a class="lang" href="../ja/chart.html">日本語</a></nav>
+</div>
+</header>
+<main class="wrap">
+<h1>Chart</h1>
+<p class="lead">Close prices with the risk level as background colour, DD markers and FTD markers. When you change the range, the vertical axis fits to it.</p>
+<div class="legend"><span><span class="chip lv-NORMAL"></span>NORMAL (no fill)</span><span><span class="chip lv-CAUTION"></span>CAUTION</span><span><span class="chip lv-HIGH"></span>HIGH</span><span><span class="chip lv-SEVERE"></span>SEVERE</span><span><span class="chip lev-band"></span>R2 levered period</span></div>
+<p><label><input type="checkbox" id="lev-toggle" checked> Show the levered periods of the variant picked in R2 as a band</label></p>
+<p class="muted">The blue band at the top marks the periods in which the variant picked in the R2 research held more than 100%. The picked variant differs by index. This is research, not a trading recommendation.</p>
+
+<p class="muted">Background colours are the risk levels from the skill&#x27;s thresholds. CAUTION: d25 of 3 or more. HIGH: any of d25 5 or more, d15 3 or more, d5 2 or more. SEVERE: d25 6 or more, d15 4 or more, or the close below both the 21-day EMA and the 50-day SMA with d25 5 or more. d5, d15 and d25 count the active DDs among today and the previous 5, 15 and 25 sessions.</p>
+<p class="muted">The triangle marks DD days and the star marks the day designated as the FTD. Hover over a star to see when it was first detected and its gain.</p>
+<div id="charts"></div>
+<noscript><p class="callout">The chart needs JavaScript.</p></noscript>
+
+</main>
+<footer class="wrap foot">
+<p class="notice">This site is for personal local use. FMP price data must not be redistributed, so do not publish or share it.</p>
+<p>FTD and DD here are judged by the rules of the claude-trading-skills code. They are not official IBD signals.</p>
+<p class="muted">Data through 2026-11-25. Generated 2026-11-27T15:06:31Z. Decision code version a1d65fd450.</p>
+</footer>
+<script>window.CHART_I18N = {"close": "Close", "dd": "Distribution Day", "ftd": "FTD", "active_dd": "Active DDs, d25 (today and the previous 25 sessions)", "risk": "Risk", "all": "All", "detected": "detected", "gain": "gain", "y_close": "Close", "y_dd": "Active DDs d25", "range_6m": "6M", "range_1y": "1Y", "range_5y": "5Y", "range_all": "All", "lev_band": "R2 levered period", "lev_toggle": "Show the levered periods of the variant picked in R2 as a band", "hover_counts": "Active DDs d5 / d15 / d25"};</script>
+<script src="../assets/chart_data.js"></script>
+<script src="../assets/chart.js"></script>
+</body>
+</html>

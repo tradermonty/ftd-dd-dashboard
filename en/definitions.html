@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Definitions | FTD / DD Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body><div role="note" style="position:sticky;top:0;z-index:9999;background:#fbb315;color:#191919;font:600 13px/1.4 -apple-system,'Hiragino Sans',sans-serif;padding:8px 12px;text-align:center">Sample data: a public test built from made-up numbers. This is not the real market.</div>
+<header class="top">
+<div class="wrap">
+<div class="brand">Follow-Through Day &amp; Distribution Day Dashboard</div>
+<nav><a href="index.html">Home</a><a href="research.html">Research</a><a href="chart.html">Chart</a><a href="events.html">Events</a><a href="definitions.html" class=active>Definitions</a><a href="data.html">Data</a><a class="lang" href="../ja/definitions.html">日本語</a></nav>
+</div>
+</header>
+<main class="wrap">
+<h1>Definitions</h1>
+<p class="lead">The judgments on this site are the claude-trading-skills code vendored into this project. The figures below are read from that code and its settings.</p>
+<div class="callout">These are not IBD&#x27;s official FTD or DD calls. IBD&#x27;s reading of the market is a human judgment; this site applies the skill&#x27;s mechanical definitions to the past.</div>
+<h2>How an FTD is judged</h2>
+<ul><li>Prior decline: a swing low after a fall of 3% or more from a recent high, with at least 3 down days. The reference high is searched up to 40 bars back.</li><li>Rally day 1: the first day after the swing low that closes up on the previous day, or closes in the top half of its own day&#x27;s range. A close below the swing-low close at any point resets the rally attempt. On days 2 and 3 the close must not fall below the day-1 intraday low.</li><li>FTD: on rally day 4 to 10, a gain of at least 1.25% on volume above the previous day.</li><li>Gains of 1.5% or more are rated recommended and 2% or more strong. The minimum is what the judgment uses.</li><li>Window: the state is judged on the last 60 bars only; the replay passes 80 bars each day.</li><li>Invalidation: a close below the FTD-day low. This site counts invalidations within 60 sessions of the FTD.</li></ul>
+<h2>How a Distribution Day is judged</h2>
+<ul><li>DD: a change of -0.2% or lower from the previous close, on volume above the previous day.</li><li>Expiry: the DD day counts as 0 and the DD drops out when the age exceeds 25, that is on the 26th session.</li><li>Invalidation: a DD drops out before expiry if the intraday high rises 5% above the DD-day close.</li><li>d5, d15 and d25 count the active DDs among today plus the previous 5, 15 and 25 sessions. For example d25 covers 26 sessions: today and the 25 before it.</li></ul>
+<h3>Risk levels</h3>
+<div class="tablewrap"><table><thead><tr><th>Level</th><th>Condition</th></tr></thead><tbody><tr><td class="l">CAUTION</td><td class="num">d25 of 3 or more</td></tr><tr><td class="l">HIGH</td><td class="num">any of d25 5 or more, d15 3 or more, d5 2 or more</td></tr><tr><td class="l">SEVERE</td><td class="num">d25 of 6 or more, or d15 of 4 or more; or the close below both the 21-day EMA and the 50-day SMA with d25 of 5 or more</td></tr><tr><td class="l">NORMAL</td><td class="num">none of the above</td></tr></tbody></table></div>
+<p class="muted">Source: rally_tracker.py and post_ftd_monitor.py in vendor/ftd_detector; models.py and risk_classifier.py in vendor/ibd_dd. The counting follows ibd_monitor.py.</p>
+<h2>How this differs from IBD in practice</h2>
+<ul><li>IBD decides by human judgment whether the market is in a correction. This skill decides mechanically with the prior-decline definition above.</li><li>The gain needed for an FTD differs between sources. The skill&#x27;s minimum is given above.</li><li>The decline threshold and the expiry rule for DDs also vary in detail between IBD articles. This site fixes them to the definition above.</li><li>IBD watches the S&amp;P 500 and the Nasdaq Composite. This site uses ^GSPC and ^IXIC, but the skills take different inputs: the FTD skill uses ^GSPC and QQQ, and the DD skill defaults to QQQ and SPY. QQQ is an ETF that tracks the Nasdaq-100, a different basket from the Nasdaq Composite, and its share volume is not the index volume. Both rules use volume, so the same day can be judged differently.</li><li>With this definition, 472 FTDs were found across the two indices between 2000-01-03 and 2026-11-25. They were not checked against IBD&#x27;s own list.</li></ul>
+<h2>Base rate</h2>
+<p>A DD is not a rare day. For each index, this shows the share of all sessions that were DDs and the expected number per 26-session d25 window.</p>
+<ul><li>S&amp;P 500: 1,431 of 6,766 sessions were DDs, a share of 21.1%. That is 5.5 per 26 sessions on average, and the average active DD count d25 was 4.4. d25 of 6 or more held on 33.5% of sessions. SEVERE is also reached by d15 of 4 or more, or by a close below both moving averages with d25 of 5 or more. The risk level was SEVERE on 45.9% of sessions and NORMAL on 25.1%. There were 3,106 SEVERE days, and 27.1% of them were SEVERE through another condition, with d25 below 6.</li><li>Nasdaq Composite: 1,431 of 6,766 sessions were DDs, a share of 21.1%. That is 5.5 per 26 sessions on average, and the average active DD count d25 was 3.9. d25 of 6 or more held on 29.1% of sessions. SEVERE is also reached by d15 of 4 or more, or by a close below both moving averages with d25 of 5 or more. The risk level was SEVERE on 42.3% of sessions and NORMAL on 31.6%. There were 2,863 SEVERE days, and 31.2% of them were SEVERE through another condition, with d25 below 6.</li></ul>
+<p>This share is the base rate. If a risk threshold sits close to this level, that level is not a rare warning; it only says the DD count is as high as usual. Compare a risk level with these shares before treating it as a signal.</p>
+<h2>Detection date and point-in-time judgment</h2>
+<ul><li>Every day&#x27;s judgment uses only data up to that day. The last 80 bars go to the FTD logic and the last 85 bars to the DD logic, and everything is recomputed from scratch each day.</li><li>ftd_date is the day designated as the FTD; detected_on is the first day of the replay on which that FTD was visible. If the window moves and an FTD appears later, the two dates differ.</li><li>In this replay the largest gap between ftd_date and detected_on was 0 sessions, across 472 FTDs.</li><li>Returns afterwards are measured from the detected_on close. Measuring from ftd_date would use information that was not yet visible. The return measured from ftd_date is kept in separate columns for reference.</li><li>The replay starts on 2000-01-03. FTDs dated before that cannot be detected point in time, so they are left out of the list.</li></ul>
+<h2>Data notes</h2>
+<p>Rows with zero or missing volume and rows with the same volume as the previous day are kept and only recorded in data_issues.csv. This run has 0 such rows. On a day with the same volume as the previous day, the condition volume above the previous day cannot hold.</p>
+</main>
+<footer class="wrap foot">
+<p class="notice">This site is for personal local use. FMP price data must not be redistributed, so do not publish or share it.</p>
+<p>FTD and DD here are judged by the rules of the claude-trading-skills code. They are not official IBD signals.</p>
+<p class="muted">Data through 2026-11-25. Generated 2026-11-27T15:06:31Z. Decision code version a1d65fd450.</p>
+</footer>
+</body>
+</html>
