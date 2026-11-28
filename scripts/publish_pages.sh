@@ -1,6 +1,6 @@
 #!/bin/bash
-# Daily public update of https://tradermonty.github.io/ftd-dd-dashboard/ (launchd:
-# launchd/com.ftd-dd-dashboard.pages.plist).
+# Daily public update of https://tradermonty.github.io/ftd-dd-dashboard/ (GitHub Actions:
+# .github/workflows/daily-pages.yml; on the Mac: launchd/com.ftd-dd-dashboard.pages.plist).
 #
 #   1. scripts/run_daily.sh: fetch FMP, rebuild, validate; build/current moves only on PASS
 #   2. pages/replay.py: judge every session since 2000 with pages/skill
@@ -54,9 +54,12 @@ run() {
         commit -qm "data: sessions through $AS_OF" || return 1
     # The token travels in the environment of this one git call, never on a command line
     # (argv is visible to every local user through ps); the helper expands it itself.
-    PAGES_PUSH_TOKEN=$(gh auth token -u tradermonty) || { echo "no tradermonty token"; return 1; }
+    # GitHub Actions passes its GITHUB_TOKEN in PAGES_PUSH_TOKEN; on the Mac it is tradermonty's.
+    if [ -z "${PAGES_PUSH_TOKEN:-}" ]; then
+        PAGES_PUSH_TOKEN=$(gh auth token -u tradermonty) || { echo "no tradermonty token"; return 1; }
+    fi
     PAGES_PUSH_TOKEN="$PAGES_PUSH_TOKEN" git -C "$WT" -c credential.helper= \
-        -c 'credential.helper=!f() { echo username=tradermonty; echo "password=$PAGES_PUSH_TOKEN"; }; f' \
+        -c 'credential.helper=!f() { echo username=x-access-token; echo "password=$PAGES_PUSH_TOKEN"; }; f' \
         push -q origin HEAD:gh-pages || return 1
     unset PAGES_PUSH_TOKEN
     echo "pushed $(git -C "$WT" log --oneline -1)"

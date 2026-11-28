@@ -1,0 +1,45 @@
+# Daily public update of https://tradermonty.github.io/ftd-dd-dashboard/.
+# Runs scripts/publish_pages.sh: fresh FMP fetch, validated build, replay, page check, then a
+# push to gh-pages. FMP data lives only inside the runner; nothing is cached or uploaded.
+name: daily pages
+
+on:
+  schedule:
+    # 23:30 UTC = 18:30 EST (winter) / 19:30 EDT (summer), after the US close, Mon-Fri
+    - cron: "30 23 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install
+        run: |
+          uv venv --python 3.12
+          uv pip install --python .venv/bin/python -e . playwright
+          .venv/bin/python -m playwright install --with-deps chromium
+
+      - name: Publish
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          PAGES_PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PLAYWRIGHT_PYTHON: ${{ github.workspace }}/.venv/bin/python
+        run: ./scripts/publish_pages.sh
+
+      - name: Show logs
+        if: always()
+        run: tail -n 80 logs/*.log 2>/dev/null || true
