@@ -1,4 +1,5 @@
-"""Public site data from pages/replay.py output + the validated build (build/current/data).
+"""Public site data from pages/replay.py output (FTD and DD judgments, dd_days.csv next to it)
+and the FMP cache in data/raw (prices).
 
 Writes <out>/mock_data.js (window.MOCK, last 130 sessions, for the top page) and
 <out>/history_data.js (window.HIST, all sessions, for the charts / look-back page).
@@ -30,10 +31,7 @@ REASON_BIT = {"distribution": 1, "below_50sma": 2, "ftd_low_close_breach": 4}
 
 pr = list(csv.DictReader(PR.open(encoding="utf-8")))
 pr_by_date = {r["date"]: r for r in pr}
-status = list(csv.DictReader((ROOT / "build/current/data/daily_status.csv").open(encoding="utf-8")))
-dds = list(
-    csv.DictReader((ROOT / "build/current/data/distribution_days.csv").open(encoding="utf-8"))
-)
+dds = list(csv.DictReader(PR.with_name("dd_days.csv").open(encoding="utf-8")))
 
 
 def raw(prefix):
@@ -56,17 +54,15 @@ hist = {"states": STATES, "risks": RISKS, "indices": {}}
 mock = {"as_of": None, "indices": {}}
 for sym, (k, pre) in KEYS.items():
     bars = raw(pre)
-    rows = [r for r in status if r["index"] == sym and r["date"] in pr_by_date]
     d, c, ddf, d25, d5, d15, risk, st, ms, day1, day, ref, rsn, adds = ([] for _ in range(14))
-    for r in rows:
-        p = pr_by_date[r["date"]]
-        d.append(r["date"])
-        c.append(round(float(r["close"]), 2))
-        ddf.append("1" if r["is_dd"] == "True" else "0")
-        d25.append(int(r["d25"]))
-        d5.append(int(r["d5"]))
-        d15.append(int(r["d15"]))
-        risk.append(str(RISKS.index(r["risk_level"])))
+    for p in pr:
+        d.append(p["date"])
+        c.append(round(float(bars[p["date"]]["close"]), 2))
+        ddf.append("1" if p[f"{k}_is_dd"] == "True" else "0")
+        d25.append(int(p[f"{k}_d25"]))
+        d5.append(int(p[f"{k}_d5"]))
+        d15.append(int(p[f"{k}_d15"]))
+        risk.append(str(RISKS.index(p[f"{k}_risk"])))
         st.append(str(STATES.index(p[f"{k}_state"])))
         ms.append(MS.get(p[f"{k}_status"], "9"))
         day1.append(p[f"{k}_day1"] or "")
@@ -77,6 +73,11 @@ for sym, (k, pre) in KEYS.items():
             bits |= REASON_BIT.get(x, 0)
         rsn.append(str(bits))
         adds.append(n_active(p[f"{k}_active_dd"]))
+    def vref(j, k=k, d=d):
+        """The session the skill compared volume with: the previous day, or after an early
+        close the last full session."""
+        return pr[j][f"{k}_vref"] or d[j - 1]
+
     # FTD events: day1, reference low date, ftd date, end date, end kind (inv | corr | "")
     ftds, i = [], 0
     pos = {x: j for j, x in enumerate(d)}
@@ -92,7 +93,7 @@ for sym, (k, pre) in KEYS.items():
                     end, kind = d[m], ("inv" if st[m] == "3" else "corr")
                     break
             gain = (bars[f]["close"] / bars[d[fi - 1]]["close"] - 1) * 100
-            vol = (bars[f]["volume"] / bars[d[fi - 1]]["volume"] - 1) * 100
+            vol = (bars[f]["volume"] / bars[vref(fi)]["volume"] - 1) * 100
             dn = day[fi]
             ftds.append([day1[fi], ref[fi], f, end, kind, round(gain, 2), round(vol, 1), dn])
     resumed = [d[j] for j in range(1, len(d)) if st[j] == "7" and st[j - 1] != "7"]
@@ -137,7 +138,7 @@ for sym, (k, pre) in KEYS.items():
                 "c": b["close"],
                 "v": b["volume"],
                 "pct": round((c[j] / c[j - 1] - 1) * 100, 2),
-                "vchg": round((b["volume"] / bars[d[j - 1]]["volume"] - 1) * 100, 1),
+                "vchg": round((b["volume"] / bars[vref(j)]["volume"] - 1) * 100, 1),
                 "dd": ddf[j] == "1",
                 "d5": d5[j],
                 "d15": d15[j],

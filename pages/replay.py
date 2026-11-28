@@ -17,6 +17,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "pages" / "skill"
+SKILL_DD = ROOT / "pages" / "skill_dd"
 WINDOW = 500
 START = "2000-01-03"
 
@@ -65,6 +66,41 @@ def load_skill():
     return mod
 
 
+def load_dd():
+    """The production ibd_monitor of pages/skill_dd; its _market_calendar is the patched one
+    above (the two skills ship byte-identical copies, checked here)."""
+    if (SKILL_DD / "scripts" / "_market_calendar.py").read_bytes() != (
+        SKILL / "_market_calendar.py"
+    ).read_bytes():
+        raise SystemExit("the two skills' _market_calendar.py differ; load them separately")
+    spec = importlib.util.spec_from_file_location(
+        "ibd_monitor_v2", SKILL_DD / "scripts" / "ibd_monitor.py"
+    )
+    mon = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mon)
+    config = mon.load_config(None)
+    return mon, config, mon._build_rule(config), mon._build_thresholds(config)
+
+
+def dd_day(dd, window_newest_first):
+    """One production analyze_index call, as ibd_monitor.main runs it (as_of=None)."""
+    mon, config, rule, thresholds = dd
+    hist = [dict(b) for b in window_newest_first]
+    res, _ = mon.analyze_index("X", "X", hist, config, rule, thresholds, None)
+    recs = res.active_distribution_days + res.removed_distribution_days
+    return res, [
+        {
+            "date": r["date"],
+            "dd_index": r["dd_index"],
+            "status": r["status"],
+            "removal_reason": r["removal_reason"],
+            "pct_change": r["pct_change"],
+            "volume_change_pct": r["volume_change_pct"],
+        }
+        for r in recs
+    ]
+
+
 @functools.lru_cache(maxsize=1)
 def _early_closes() -> frozenset:
     import pandas_market_calendars as pmc
@@ -84,16 +120,24 @@ def bars(prefix: str) -> list[dict]:
 
 def main(out: Path) -> None:
     rt = load_skill()
+    dd = load_dd()
+    dd_window = int(dd[1].get("lookback_days", 80)) + 5  # what ibd_monitor.main fetches
     sp, nq = bars("GSPC"), bars("IXIC")
     dates = [b["date"] for b in sp]
     if dates != [b["date"] for b in nq]:
         raise SystemExit("S&P 500 and Nasdaq bars are not on the same sessions")
-    rows, t0 = [], time.time()
+    rows, dd_rows, t0 = [], [], time.time()
     for i, d in enumerate(dates):
         if d < START:
             continue
         lo = max(0, i - WINDOW + 1)
         s = rt.get_market_state(sp[lo : i + 1][::-1], nq[lo : i + 1][::-1])
+        dlo = max(0, i - dd_window + 1)
+        dd_res = {}
+        for sym, k, series in (("^GSPC", "sp500", sp), ("^IXIC", "nasdaq", nq)):
+            res, recs = dd_day(dd, series[dlo : i + 1][::-1])
+            dd_res[k] = res
+            dd_rows.append({"index": sym, "date": d, "_dd": recs})
         row = {
             "date": d,
             "combined_status": s.get("market_status"),
@@ -114,6 +158,14 @@ def main(out: Path) -> None:
                     f"{k}_ftd": f.get("ftd_date") if f.get("ftd_detected") else None,
                     f"{k}_pressure": "|".join(cyc.get("pressure_reasons") or []),
                     f"{k}_active_dd": cyc.get("active_distribution_days"),
+                    f"{k}_is_dd": dd_res[k].is_distribution_day_today,
+                    f"{k}_d5": dd_res[k].d5_count,
+                    f"{k}_d15": dd_res[k].d15_count,
+                    f"{k}_d25": dd_res[k].d25_count,
+                    f"{k}_risk": dd_res[k].risk_level,
+                    # set when an early close made the skill compare volume with an older
+                    # full session instead of the previous day
+                    f"{k}_vref": dd_res[k].today.get("volume_reference_date") or "",
                 }
             )
         rows.append(row)
@@ -125,7 +177,19 @@ def main(out: Path) -> None:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
-    tmp.replace(out)
+    # one row per DD, expiry and invalidation as the research build derives them
+    sys.path.insert(0, str(ROOT))
+    from engine.events import distribution_days
+
+    dd_out = out.with_name("dd_days.csv")
+    events = distribution_days(dd_rows, dates)
+    with dd_out.with_suffix(".tmp").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["index", "date", "expires_on", "invalidated_on"])
+        w.writeheader()
+        w.writerows({k: e[k] or "" for k in w.fieldnames} for e in events)
+    dd_out.with_suffix(".tmp").replace(dd_out)
+    tmp.replace(out)  # the replay CSV last: both files move only once both are written
+    print(f"wrote {dd_out} ({len(events)} distribution days)")
     print(f"wrote {out} ({len(rows)} sessions, last {rows[-1]['date']}, {time.time() - t0:.0f}s)")
 
 

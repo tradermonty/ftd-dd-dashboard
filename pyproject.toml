@@ -30,7 +30,7 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["vendor", "pages/skill"]
+extend-exclude = ["vendor", "pages/skill", "pages/skill_dd"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

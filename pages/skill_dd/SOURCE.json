@@ -1,0 +1,6 @@
+{
+  "ref": "58108806bb46b39cc6ea1995d975bc97681eaa2f",
+  "source_repo": "tradermonty/claude-trading-skills",
+  "source_dir": "skills/ibd-distribution-day-monitor/scripts (and config/default.yaml)",
+  "note": "used by pages/replay.py for the public site's distribution days; vendor/ibd_dd stays on a1d65fd450 for the research build"
+}

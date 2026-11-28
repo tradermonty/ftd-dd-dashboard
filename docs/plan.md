@@ -117,7 +117,8 @@ ftd-dd-dashboard/
 ├─ webgen/, site/templates/  the research site (pages, Japanese/English wording) and its checks
 ├─ pages/                    the public dashboard (section 5.2)
 │  ├─ skill/                 ftd-detector scripts at the ref in SOURCE.json (dashboard only)
-│  ├─ replay.py              judges every session since 2000 with pages/skill
+│  ├─ skill_dd/              ibd-distribution-day-monitor at the same ref (dashboard only)
+│  ├─ replay.py              judges every session since 2000 with both
 │  ├─ build_data.py          mock_data.js (top page) and history_data.js (look-back page)
 │  ├─ check.py               opens the 4 pages at phone width
 │  └─ site/                  the mobile pages (/, /ja/, /en/)
@@ -147,10 +148,13 @@ ftd-dd-dashboard/
     `sys.modules["models"]` before `distribution_day_tracker` is loaded.
 - `dd_glue.py` copies production `analyze_index`'s counting, so a test checks that it matches
   production `analyze_index` on the same data.
-- The public dashboard judges FTDs and rally attempts with a newer ref of the ftd-detector
-  scripts (`pages/skill/SOURCE.json`, claude-trading-skills `58108806`). Its distribution days,
-  d5/d15/d25 and risk levels still come from the research build (`build/current/data/`), at the
-  vendor ref. Bringing `vendor/` up to the newer skills is open work.
+- The public dashboard judges with a newer ref, claude-trading-skills `58108806`: FTDs and rally
+  attempts with the ftd-detector scripts (`pages/skill/`), distribution days, d5/d15/d25 and
+  risk levels with production `ibd_monitor.analyze_index` of ibd-distribution-day-monitor
+  (`pages/skill_dd/`, 85 bars newest-first, `as_of=None`). That ref compares volume with the
+  last full session around an early close (#892), so 12 DDs per index since 2000 that the
+  vendored ref finds on the session after an early close are not DDs on the dashboard. Bringing
+  `vendor/` up to the newer skills is open work.
 
 ## 3. Processing
 

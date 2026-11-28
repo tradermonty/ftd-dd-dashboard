@@ -3,7 +3,7 @@
 # .github/workflows/daily-pages.yml; on the Mac: launchd/com.ftd-dd-dashboard.pages.plist).
 #
 #   1. scripts/run_daily.sh: fetch FMP, rebuild, validate; build/current moves only on PASS
-#   2. pages/replay.py: judge every session since 2000 with pages/skill
+#   2. pages/replay.py: judge every session since 2000 with pages/skill and pages/skill_dd
 #   3. pages/build_data.py: mock_data.js (top page) and history_data.js (look-back page)
 #   4. pages/check.py: open all 4 pages at phone width; any script error stops the push
 #   5. replace the gh-pages tree and push as tradermonty
