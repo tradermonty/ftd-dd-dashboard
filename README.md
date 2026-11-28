@@ -20,10 +20,10 @@ Definitions are those of the skills, not official IBD signals.
   (`scripts/run_daily.sh`, `launchd/` template).
 - Public dashboard: `pages/` (replay, data builder, page check, the mobile pages) and
   `scripts/publish_pages.sh`, run on weekdays by GitHub Actions (`.github/workflows/daily-pages.yml`).
-  It judges with claude-trading-skills `58108806` (`pages/skill/`).
+  It judges FTDs with the ftd-detector scripts of claude-trading-skills `58108806`
+  (`pages/skill/`); distribution days come from the research build.
 - The research build still vendors the 2026-11-08 skills (`vendor/VENDOR.lock`); updating it
-  is ticket P2.
-- Work is tracked as tickets in `tasks/` (task-runner layout; open `tasks/dashboard.html`).
+  is open work.
 
 ## Setup
 

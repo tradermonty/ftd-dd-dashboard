@@ -254,7 +254,7 @@ def test_plan_documents_the_frozen_end_the_third_exception_and_the_freeze_dates(
     )
     text = plan.read_text(encoding="utf-8")
     assert "TEST_END" in text and "2026-11-06" in text
-    assert "三つ目" in text or "三つ" in text
+    assert "third exception" in text
     assert "UTC" in text and "04:06:20Z" in text
-    assert re.search(r"行為|下見", text)
+    assert re.search(r"[Pp]review", text)
     assert "daily_status" in text  # the full-recomputation gate is described

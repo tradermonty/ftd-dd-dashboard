@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build everything into a NEW run directory, validate it, and only on PASS repoint the
-`current` symlink (docs/plan.md section 5, local-only: no GitHub Pages / Actions).
+`current` symlink (docs/plan.md section 5; the public dashboard is built from it, section 5.2).
 
     build/runs/<UTC timestamp>/{data,research,site,validation.json}
     build/current -> runs/<UTC timestamp>      (replaced atomically, only after PASS)

@@ -1,385 +1,595 @@
-# ftd-dd-dashboard 実装計画
+# ftd-dd-dashboard implementation plan
 
-作成日: 2026-11-07（土）
-改訂: 第2版。独立レビューの指摘 13 件を反映した
-対象リポジトリ: `tradermonty/ftd-dd-dashboard`（新規・公開）
-公開先: `https://tradermonty.github.io/ftd-dd-dashboard/`
+Written: 2026-11-07 (Sat)
+Revision: 3rd. The 2nd revision took in the 13 findings of an independent review. The 3rd
+(2026-11-28) translates the plan into English and brings sections 0, 2, 5 and 6 up to date with
+the public dashboard. The Japanese original, including the wording that the research pages
+quote as "written before the computations", is in git history (`git show ff8fbe9:docs/plan.md`).
+Repository: `tradermonty/ftd-dd-dashboard` (public)
+Site: `https://tradermonty.github.io/ftd-dd-dashboard/`
 
-## 0. 決定事項
+## 0. Decisions
 
-| 項目 | 決定 |
+| Item | Decision |
 |---|---|
-| 指数 | `^GSPC`（S&P 500）と `^IXIC`（ナスダック総合）。IBD に合わせる |
-| 期間 | 2000-01-03 以降を公開。判定の助走用に 1999-06-01 から取得する |
-| 言語 | 日本語と英語。ページは `/ja/` と `/en/`、CSV と列名は英語で共通 |
-| 更新 | 米国市場の引け後に1日1回、平日のみ |
-| 公開形態 | **当面は手元専用。** FMP の規約 2.2.2 項・2.6.1 項により、書面の許可なしに公開しての表示や配布はできないため（2026-11-07 に規約の本文で確認）。GitHub は非公開リポジトリでコードだけを置く。データと生成したサイトは手元のフォルダに作り、Git には入れない。Mac の launchd で毎日実行し、ブラウザで手元のファイルを開いて見る |
-| 名称 | ftd-dd-dashboard。サイトの見出しは「Follow-Through Day & Distribution Day Dashboard」 |
+| Indexes | `^GSPC` (S&P 500) and `^IXIC` (NASDAQ Composite), as IBD uses |
+| Period | Published from 2000-01-03. Fetched from 1999-06-01 so the judgment has a run-up |
+| Languages | Japanese and English. Pages under `/ja/` and `/en/`; CSVs and column names are English for both |
+| Updates | Once a day after the US close, weekdays only |
+| Publication | **Public since 2026-11-28.** FMP's terms 2.2.2 and 2.6.1 require written permission to display or redistribute its data publicly (checked in the terms on 2026-11-07). FMP had not answered by 2026-11-28, and the owner decided to publish anyway so the dashboard can be used and evaluated daily, accepting that risk (R7). The repository is public and `main` holds code only: FMP prices and the CSVs derived from them never go into `main` (`data/raw/`, `build/`, `tests/fixtures/bars.json` are git-ignored). The site is the `gh-pages` branch, rebuilt every weekday by GitHub Actions (section 5.2) |
+| Name | ftd-dd-dashboard. Site heading "Follow-Through Day & Distribution Day Dashboard" |
 
-## 1. 前提として確認した事実
+## 1. Facts checked first
 
-確認日時は 2026-11-07 16:25〜16:55。確認方法は、ソースの読解、FMP への実際の問い合わせ、本物の `rally_tracker.py` を使った試験的な再生。
+Checked 2026-11-07 16:25-16:55 by reading the source, querying FMP, and a trial replay with the
+real `rally_tracker.py`. Line numbers refer to the claude-trading-skills ref vendored then.
 
-### 1.1 FTD の判定（`skills/ftd-detector/scripts/`）
+### 1.1 FTD judgment (`skills/ftd-detector/scripts/`)
 
-- `rally_tracker.get_market_state(sp500_history, nasdaq_history)`（506行目）は、新しい順の履歴を受け取り、内部で古い順に並べ替えて（523〜524行目）`analyze_single_index()` を呼ぶ。
-- 本番のスキルは 80 本を取得する（`ftd_detector.py` 72・83行目）。ただし `analyze_single_index()` は、そのうち直近 **60 本** だけで判定する（`rally_tracker.py` 384〜386行目）。FTD 後の監視をする `post_ftd_monitor.assess_post_ftd_health()` は、80 本すべてを使う（`ftd_detector.py` 148〜151行目）。
-- スイングローの基準になる高値は、最大 40 本前までしか探さない（`rally_tracker.py` 58行目）。このため、窓がずれるとスイングローの位置が変わり、FTD が後から現れることがある（§3.3）。
-- FTD のルール: ラリー4〜10日目に +1.25% 以上（`FTD_GAIN_MINIMUM`、42行目）、かつ出来高が前日より多い。50日平均出来高は窓の中だけで計算する（325行目）。そのため、FTD が窓の先頭に近いと、50 本より少ない本数の平均になる。
-- 押し目の定義は、3% 以上の下落と 3 日以上の下げ（35〜37行目）。IBD とは定義が違い、FTD は IBD よりずっと多く出る。`^GSPC` の 2006〜2026 年で 98 件、年に約 5 件。
-- 無効化の日付は `analyze_single_index()` の出力にはない。`post_ftd_monitor.check_ftd_invalidation(history, ftd_idx)`（74行目）が返す。
-- 本番のスキルは、ナスダックの代わりに `QQQ` を使う（83行目）。`--as-of` もない。quote は表示に使うだけで、履歴には足さない。
-- `rally_tracker.py` と `post_ftd_monitor.py` は、標準ライブラリ以外を読み込まない。
+- `rally_tracker.get_market_state(sp500_history, nasdaq_history)` (line 506) takes newest-first
+  histories, sorts them oldest-first internally (lines 523-524) and calls `analyze_single_index()`.
+- The production skill fetches 80 bars (`ftd_detector.py` lines 72 and 83), but
+  `analyze_single_index()` judges only the latest **60** (`rally_tracker.py` lines 384-386). The
+  post-FTD monitor `post_ftd_monitor.assess_post_ftd_health()` uses all 80 (`ftd_detector.py`
+  lines 148-151).
+- The high that anchors a swing low is searched at most 40 bars back (`rally_tracker.py` line
+  58). When the window moves, the swing low can move, so an FTD can appear late (section 3.3).
+- FTD rule: day 4-10 of a rally, a gain of +1.25% or more (`FTD_GAIN_MINIMUM`, line 42), and
+  volume above the previous day. The 50-day average volume is computed inside the window only
+  (line 325), so an FTD near the start of the window averages fewer than 50 bars.
+- A correction is a decline of 3% or more over 3 or more down days (lines 35-37). This differs
+  from IBD and yields far more FTDs than IBD: 98 for `^GSPC` in 2006-2026, about 5 a year.
+- The invalidation date is not in the output of `analyze_single_index()`; it comes from
+  `post_ftd_monitor.check_ftd_invalidation(history, ftd_idx)` (line 74).
+- The production skill uses `QQQ` instead of the NASDAQ index (line 83) and has no `--as-of`.
+  The quote is display-only and is not appended to the history.
+- `rally_tracker.py` and `post_ftd_monitor.py` import only the standard library.
 
-### 1.2 ディストリビューションデーの判定（`skills/ibd-distribution-day-monitor/scripts/`）
+### 1.2 Distribution-day judgment (`skills/ibd-distribution-day-monitor/scripts/`)
 
-- `distribution_day_tracker.detect_distribution_days()`（21行目）と `enrich_records()`（58行目）。入力は新しい順（ファイル冒頭の説明）。`enrich_records()` は、渡されたレコードを書き換える。
-- ルール: 前日比 -0.2% 以下（`models.py` 16行目）、かつ出来高が前日より多い。`age > 25` で失効する（`models.py` 17行目、tracker 87行目）。DD 当日を 0 と数えるので、26 セッション目に失効する。DD 当日を除き、失効までに高値が 5% 上がると無効になる。
-- 本番では、`count_active_in_window(records, 25)` で有効な数を数え（`ibd_monitor.py` 237行目）、当日が DD かどうかは `dd_index == 0 and status == "active"` で決める（246行目）。
-- 本番のスキルは `lookback + 5` = 85 本を取得する（`ibd_monitor.py` 352・363行目）。既定の銘柄は `QQQ,SPY` で、`lookback_days` は 80。DD の判定に要るのは約 27 本で、先読みはない。
-- `distribution_day_tracker.py` は `from models import ...`（16行目）を使う。`ibd_monitor.py` は、読み込んだ時点で `sys.path` を書き換え（31行目）、`yaml` と、FTD 側と同じ名前の `report_generator` を読み込む。
+- `distribution_day_tracker.detect_distribution_days()` (line 21) and `enrich_records()` (line
+  58). Input is newest-first (file header). `enrich_records()` mutates the records it is given.
+- Rule: -0.2% or worse from the previous close (`models.py` line 16) with volume above the
+  previous day. Expires when `age > 25` (`models.py` line 17, tracker line 87). The DD day counts
+  as 0, so it expires on the 26th session. Excluding the DD day, it is invalidated if the high
+  rises 5% before it expires.
+- Production counts active DDs with `count_active_in_window(records, 25)` (`ibd_monitor.py`
+  line 237) and decides whether today is a DD with `dd_index == 0 and status == "active"` (line
+  246).
+- Production fetches `lookback + 5` = 85 bars (`ibd_monitor.py` lines 352 and 363). Default
+  symbols are `QQQ,SPY`, `lookback_days` 80. A DD judgment needs about 27 bars, with no look-ahead.
+- `distribution_day_tracker.py` does `from models import ...` (line 16). `ibd_monitor.py`
+  rewrites `sys.path` on import (line 31) and imports `yaml` and a `report_generator` with the
+  same name as the FTD side's.
 
-### 1.3 データ（FMP）
+### 1.3 Data (FMP)
 
-- `GET /stable/historical-price-eod/full?symbol=...&from=...&to=...` で、`^GSPC` と `^IXIC` は 1990-02-01 から出来高つきで取れる。`QQQ` は 1999 年以前が空。
-- **1回の応答は 5,000 行で打ち切られ、新しい側の 5,000 行が返る。** 1999-06-01〜2026-11-07 を指定すると、2006-12-21〜2026-11-06 しか返らなかった。4 年の区間なら約 1,005 行。
-- 1999〜2003 年の両指数には、出来高が 0 や空の行はなかった。
-- 前日とまったく同じ出来高の行がある。`^GSPC` で 10 か所あり、たとえば 2011 年の 03-25、04-04、04-18、05-04 は、どれも `4223740000` だった。前日と同じ値だと「出来高が前日より多い」が偽になり、判定に影響する。
-- 古い年の指数の出来高が、ほかの情報源とどれだけ合うかは確認していない（R1）。
-- FMP の利用規約が、価格と出来高の再配布を認めているかは確認していない（R7）。
+- `GET /stable/historical-price-eod/full?symbol=...&from=...&to=...` returns `^GSPC` and `^IXIC`
+  with volume from 1990-02-01. `QQQ` is empty before 1999.
+- **One response is cut at 5,000 rows and returns the newest 5,000.** Asking for 1999-06-01 to
+  2026-11-07 returned only 2006-12-21 to 2026-11-06. A 4-year range is about 1,005 rows.
+- In 1999-2003 neither index has a zero or empty volume.
+- Some rows repeat the previous day's volume exactly: 10 places for `^GSPC`, e.g. 2011-03-25,
+  04-04, 04-18 and 05-04, all `4223740000`. An equal value makes "volume above the previous day"
+  false and so affects the judgment.
+- How well old index volumes agree with other sources is unchecked (R1).
+- Whether FMP's terms allow redistributing prices and volumes was not checked at this point (R7).
 
-### 1.4 営業日カレンダー
+### 1.4 Trading calendar
 
-- market_breadth と同じ `exchange-calendars>=4.5,<5` の XNYS を使う。
-- 既定では 2006-11-07 からしか営業日を持たない（4.13.2 で確認）。`get_calendar("XNYS", start="1999-01-01")` と開始日を指定する。指定すると、1999-06-01〜2003-05-30 は 1,005 セッションで、FMP の行数と一致した。
+- `exchange-calendars>=4.5,<5` XNYS, as market_breadth uses.
+- By default it holds sessions only from 2006-11-07 (checked on 4.13.2). Pass the start:
+  `get_calendar("XNYS", start="1999-01-01")`. With it, 1999-06-01 to 2003-05-30 is 1,005
+  sessions, matching FMP's row count.
 
-### 1.5 公開の仕組み（market_breadth）
+### 1.5 How market_breadth publishes
 
-`~/PycharmProjects/market_breadth/.github/workflows/daily-market-breadth.yml` と `docs/publication_gate.md` の方式を流用する。
+The approach of `~/PycharmProjects/market_breadth/.github/workflows/daily-market-breadth.yml` and
+`docs/publication_gate.md` is to be reused:
 
-- 毎回新しいディレクトリに出力を作り、検証に合格したときだけ Pages の成果物として上げる。失敗すると deploy のジョブが動かず、前回の公開版が残る。
-- `validation.json` に、合否、市場の日付、元のコミット、ファイルのハッシュを記録する。
-- 30 日コミットがないと、空コミットを入れる keepalive のジョブ。`concurrency: group: pages` も引き継ぐ。
+- Every run writes a fresh directory and uploads it only if validation passes. On failure the
+  deploy job does not run and the previous version stays up.
+- `validation.json` records pass/fail, the market date, the source commit and file hashes.
+- A keepalive job adds an empty commit after 30 days without commits; `concurrency: group: pages`
+  is carried over too.
 
-## 2. 全体構成
+As built (section 5.2), the dashboard workflow keeps the "push only after the checks pass" rule
+but has no keepalive job, and its concurrency group is `daily-pages`.
+
+## 2. Layout
 
 ```
 ftd-dd-dashboard/
-├─ vendor/
+├─ vendor/                   research build: skills at the ref in VENDOR.lock
 │  ├─ ftd_detector/          rally_tracker.py, post_ftd_monitor.py
-│  ├─ ibd_dd/                distribution_day_tracker.py, models.py, history_utils.py
-│  └─ VENDOR.lock            取り込み元のコミット SHA と、各ファイルの SHA-256
+│  ├─ ibd_dd/                distribution_day_tracker.py, models.py, history_utils.py,
+│  │                         risk_classifier.py, math_utils.py
+│  └─ VENDOR.lock            source commit SHA and SHA-256 of each file
 ├─ engine/
-│  ├─ loader.py              vendor のモジュールの読み込み
-│  ├─ fetch.py               FMP から区間に分けて取得し、結合して検査する
-│  ├─ replay.py              1日ずつ進めて判定し直す
-│  ├─ dd_glue.py             本番の ibd_monitor.analyze_index のうち、DD の数を数える部分の写し
-│  ├─ events.py              判定結果からイベントを取り出す
-│  └─ outcomes.py            イベント後の騰落と、統計の集計
+│  ├─ loader.py              loads the vendored modules
+│  ├─ fetch.py               fetches FMP in ranges, joins and checks them
+│  ├─ replay.py              re-judges one session at a time
+│  ├─ dd_glue.py             copy of the DD-counting part of production ibd_monitor.analyze_index
+│  ├─ events.py              extracts events from the judgments
+│  ├─ outcomes.py            returns after events and their statistics
+│  └─ retention.py           keeps or deletes old runs (section 5.1)
+├─ research/                 research phases R and R2 (sections 3.6, 3.7)
+├─ webgen/, site/templates/  the research site (pages, Japanese/English wording) and its checks
+├─ pages/                    the public dashboard (section 5.2)
+│  ├─ skill/                 ftd-detector scripts at the ref in SOURCE.json (dashboard only)
+│  ├─ replay.py              judges every session since 2000 with pages/skill
+│  ├─ build_data.py          mock_data.js (top page) and history_data.js (look-back page)
+│  ├─ check.py               opens the 4 pages at phone width
+│  └─ site/                  the mobile pages (/, /ja/, /en/)
 ├─ scripts/
-│  ├─ sync_vendor.py         claude-trading-skills から取り込み、VENDOR.lock を更新
-│  ├─ build_dataset.py       CSV と JSON を作る
-│  ├─ build_site.py          HTML を作る（日本語と英語）
-│  └─ publish.py             生成と検証をまとめて行う
-├─ site/templates/           ページのテンプレートと、日英の文言ファイル
+│  ├─ sync_vendor.py         vendors from claude-trading-skills and updates VENDOR.lock
+│  ├─ run_replay.py, build_events.py, run_research.py
+│  ├─ publish.py             build and validate the research build (section 5)
+│  ├─ run_daily.sh           the validated daily build
+│  └─ publish_pages.sh       run_daily.sh, then the dashboard, then the push to gh-pages
+├─ launchd/                  Mac templates (section 5.1)
 ├─ tests/
 └─ .github/workflows/
-   ├─ ci.yml                 PR ごとのテスト（ネットワークなし）
-   └─ daily-publish.yml      毎日の生成、検証、Pages への公開、keepalive
+   └─ daily-pages.yml        weekday build and push to gh-pages (section 5.2)
 ```
 
-### 2.1 判定ロジックの持ち方
+### 2.1 How the judgment logic is kept
 
-- ルールは書き直さず、スキルのファイルを写して使う。サイトとスキルの判定が食い違わないようにするため。
-- `scripts/sync_vendor.py --ref <commit>` で取り込み、`VENDOR.lock` に元のコミットとハッシュを残す。CI で、写したファイルと lock のハッシュが一致することを確かめる。
-- 写すのは §2 の5ファイルだけ。`ibd_monitor.py`、`fmp_client.py`、`report_generator.py` は写さない。
-- 読み込み方:
-  - FTD 側は、`importlib.util.spec_from_file_location` でファイルから直接読む。
-  - DD 側だけ `from models import ...` があるので、`models` を `vendor.ibd_dd.models` として先に `sys.modules["models"]` に登録してから `distribution_day_tracker` を読む。
-- `dd_glue.py` は本番の `analyze_index` の数え方の写しなので、本番の `analyze_index` に同じデータを渡した結果と一致するテストで確かめる。
+- The rules are not rewritten; the skill files are copied, so the site and the skill cannot
+  disagree.
+- `scripts/sync_vendor.py --ref <commit>` vendors them and records the commit and hashes in
+  `VENDOR.lock`. Tests check the copies against the lock.
+- Only the files in section 2 are copied; `ibd_monitor.py`, `fmp_client.py` and
+  `report_generator.py` are not.
+- Loading:
+  - FTD side: read straight from the file with `importlib.util.spec_from_file_location`.
+  - DD side has `from models import ...`, so `vendor.ibd_dd.models` is registered as
+    `sys.modules["models"]` before `distribution_day_tracker` is loaded.
+- `dd_glue.py` copies production `analyze_index`'s counting, so a test checks that it matches
+  production `analyze_index` on the same data.
+- The public dashboard judges FTDs and rally attempts with a newer ref of the ftd-detector
+  scripts (`pages/skill/SOURCE.json`, claude-trading-skills `58108806`). Its distribution days,
+  d5/d15/d25 and risk levels still come from the research build (`build/current/data/`), at the
+  vendor ref. Bringing `vendor/` up to the newer skills is open work.
 
-## 3. 処理の流れ
+## 3. Processing
 
-### 3.1 取得（fetch.py）
+### 3.1 Fetch (fetch.py)
 
-- 1999-06-01 から実行日までを、4 年ごとの 7 区間に分けて取得する。2 指数で 14 回の問い合わせ。
-- 区間ごとに、返った行数が 5,000 未満であることを確かめる。5,000 ちょうどなら、打ち切られたとみなして失敗にする。
-- 結合したあと、日付の重複がないこと、XNYS の営業日と過不足なく一致することを確かめる。
-- 行は取り除かない。行を取り除くと「前日」が 2 日前に変わり、ラリーの日数も変わるため。出来高が 0 または空の行と、前日と同じ出来高の行は、`data_issues.csv` に記録するだけにする。判定から外すかどうかは、本番のスキルの扱いに任せる。
+- 1999-06-01 to the run date in 7 ranges of 4 years: 14 requests for the two indexes.
+- Each range must return fewer than 5,000 rows; exactly 5,000 is taken as truncated and fails.
+- After joining: no duplicate dates, and the dates match XNYS sessions exactly.
+- No rows are dropped. Dropping one turns "the previous day" into two days back and changes the
+  rally day count. Zero or empty volumes and volumes equal to the previous day are only recorded
+  in `data_issues.csv`; whether to exclude them is left to how the production skill treats them.
 
-### 3.2 判定の再現（replay.py）
+### 3.2 Replay (replay.py)
 
-各営業日 t について、t 以前のデータだけを使う。
+For each session t, only data up to t is used.
 
-- **FTD:** t を最新とする直近 80 本を、新しい順で `get_market_state()` に渡し、続けて古い順の 80 本で `assess_post_ftd_health()` を呼ぶ。本番の `ftd_detector.py` と同じ順番。
-- **ディストリビューションデー:** t を最新とする直近 85 本を、`detect_distribution_days()` → `enrich_records()` → `dd_glue` の順に通す。`enrich_records()` は入力を書き換えるので、日ごとに新しいレコードで呼ぶ。
+- **FTD:** the latest 80 bars ending at t, newest-first, into `get_market_state()`, then
+  `assess_post_ftd_health()` on the same 80 oldest-first. Same order as production
+  `ftd_detector.py`.
+- **Distribution days:** the latest 85 bars ending at t through `detect_distribution_days()` ->
+  `enrich_records()` -> `dd_glue`. `enrich_records()` mutates its input, so each day gets fresh
+  records.
 
-日ごとの状態は `daily_status.csv` に1行ずつ書く。5,000 日分の再生は数秒で終わることを、レビューの試験で確かめた。
+Each day's state is one row of `daily_status.csv`. A review trial showed 5,000 days replay in
+seconds.
 
-### 3.3 イベントの取り出し（events.py）
+### 3.3 Events (events.py)
 
 **FTD**
-- イベントの単位は、指数と `ftd_date` の組。
-- 列は2つに分ける。
-  - `ftd_date`: FTD とされた日。
-  - `detected_on`: 再生の中で、その FTD が初めて現れた日。
-- `lag_sessions` は、`ftd_date` から `detected_on` までのセッション数。
-  - レビュー時の試験では遅れが数件出たが、どれもデータの始まりの直後で、80 本の窓がそろっていなかったためだった。
-  - 1999-06 から取得した全期間の再生（P3）では、2000〜2026 年に遅れは 0 件だった。
-  - 再生の開始日より前の日付の FTD は、時点を追った検出ができないため、イベントから外す。
-- `detected_on` の時点ですでに `FTD_INVALIDATED` だったものには、`invalidated_at_detection = true` の印を付ける。P3 の全期間の再生では 0 件だった。
-- FTD が 60 本の窓から外れて状態が変わるのは、イベントとして扱わない。
+- An event is the pair (index, `ftd_date`).
+- Two date columns:
+  - `ftd_date`: the day judged to be the FTD.
+  - `detected_on`: the first day in the replay on which that FTD appeared.
+- `lag_sessions` is the number of sessions from `ftd_date` to `detected_on`.
+  - The review trial found a few lags, all just after the start of the data, where the 80-bar
+    window was not yet full.
+  - In the full replay fetched from 1999-06 (P3) there were no lags in 2000-2026.
+  - FTDs dated before the replay start cannot be detected point-in-time and are dropped.
+- FTDs already `FTD_INVALIDATED` on `detected_on` are flagged `invalidated_at_detection = true`.
+  The full P3 replay had none.
+- A state change caused by the FTD leaving the 60-bar window is not an event.
 
-**FTD の無効化**
-- 状態の変化からは取り出さない。遅れて見つかった場合や、窓の動きで状態が変わる場合があるため。
-- 全履歴に対して `check_ftd_invalidation(full_chrono, idx_of(ftd_date))` を呼び、FTD から 60 セッション以内に無効化されたかと、その日付を求める。
+**FTD invalidation**
+- Not taken from state changes, because of late detection and window movement.
+- `check_ftd_invalidation(full_chrono, idx_of(ftd_date))` on the full history gives whether and
+  when the FTD was invalidated within 60 sessions.
 
-**ディストリビューションデー**
-- t の判定で `dd_index == 0` だったものを、その日の DD とする。
-- 失効日と無効化の日は、その後の日の判定から取り出す。
+**Distribution days**
+- A DD is a day whose own judgment has `dd_index == 0`.
+- Expiry and invalidation dates come from the judgments of later days.
 
-### 3.4 その後の成績（outcomes.py）
+### 3.4 Outcomes (outcomes.py)
 
-- 成績は **`detected_on` の引け** から測る。`ftd_date` から測ると、その時点ではまだ見えていなかった情報を使うことになるため。参考として `ftd_date` から測った値も、別の列名で出す。
-- FTD ごとに、5・10・20・60 営業日後の騰落率、60 営業日のうちの最大の下落、60 セッション以内の無効化の有無を出す。
-- 有効な DD の数が 0〜3、4、5、6 以上の日ごとに、20・60 営業日後の騰落率を集計する。
-- 統計の出し方:
-  - 件数、中央値、四分位の範囲を出し、平均だけを示さない。
-  - 指数ごとに分けて集計する。S&P 500 とナスダックの FTD は同じ時期に重なるので、合算しない。
-  - 日ごとの集計は期間が重なるため、重ならないように間引いた標本と、ブロック単位で区切る方法の両方を出す。
+- Measured **from the close of `detected_on`**. Measuring from `ftd_date` would use information
+  not yet visible. The `ftd_date`-based values are also output, under other column names.
+- Per FTD: returns after 5, 10, 20 and 60 sessions, the maximum drawdown within 60 sessions, and
+  whether it was invalidated within 60 sessions.
+- Returns after 20 and 60 sessions grouped by active-DD count 0-3, 4, 5, 6+.
+- Statistics:
+  - Count, median and interquartile range; never the mean alone.
+  - Per index. S&P 500 and NASDAQ FTDs overlap in time and are not pooled.
+  - Daily groupings overlap, so both a thinned non-overlapping sample and a block method are shown.
 
-### 3.4.1 ディストリビューションデーの危険度（P3 の後、P5 の前に追加）
+### 3.4.1 Distribution-day risk level (added after P3, before P5)
 
-- 本番のスキルは、指数ごとに NORMAL、CAUTION、HIGH、SEVERE の4段階を出す（`risk_classifier.classify_risk()`）。しきい値は `models.RiskThresholds` と `config/default.yaml` の `risk_thresholds`。
-  - SEVERE: 25 日で 6 以上、または 15 日で 4 以上。または、終値が 21EMA と 50SMA の両方を下回り、かつ 25 日で 5 以上（`ibd_monitor.py` 159〜160行目）
-  - HIGH: 25 日で 5 以上、15 日で 3 以上、5 日で 2 以上のどれか
-  - CAUTION: 25 日で 3 以上
-  - NORMAL: それ以外
-- vendor に `risk_classifier.py` と `math_utils.py` を足す。移動平均の判定 `_compute_ma_filters()`（`ibd_monitor.py` 125行目）は `dd_glue.py` に写し、本番の `analyze_index` の `risk` と一致することをテストで確かめる。EMA は与えた本数で値が変わるので、本番と同じ 85 本の窓で計算する。
-- `daily_status.csv` に `risk_level` と `market_below_ma` を足す。
-- チャートでは、日ごとの危険度で背景を塗り分ける。連続する同じ危険度の日をまとめて1つの帯にし、NORMAL は塗らない。色は CAUTION が薄い黄、HIGH が薄い橙、SEVERE が薄い赤。凡例と、ホバーで各日の d5/d15/d25 と危険度を出す。
-- 統計ページに、危険度ごとの 20・60 日後の騰落を、§3.4 と同じ出し方で足す。
+- Production gives each index one of NORMAL, CAUTION, HIGH, SEVERE
+  (`risk_classifier.classify_risk()`), with thresholds from `models.RiskThresholds` and
+  `risk_thresholds` in `config/default.yaml`:
+  - SEVERE: 6+ in 25 days, or 4+ in 15 days, or close below both the 21EMA and the 50SMA with 5+
+    in 25 days (`ibd_monitor.py` lines 159-160)
+  - HIGH: 5+ in 25 days, 3+ in 15 days, or 2+ in 5 days
+  - CAUTION: 3+ in 25 days
+  - NORMAL: otherwise
+- `risk_classifier.py` and `math_utils.py` are vendored. The moving-average test
+  `_compute_ma_filters()` (`ibd_monitor.py` line 125) is copied into `dd_glue.py` and tested
+  against production `analyze_index`'s `risk`. The EMA depends on the bar count, so it uses the
+  same 85-bar window as production.
+- `daily_status.csv` gains `risk_level` and `market_below_ma`.
+- The chart shades the background by daily risk level, merging runs of equal level into one band;
+  NORMAL is unshaded. CAUTION light yellow, HIGH light orange, SEVERE light red. A legend, and a
+  hover showing each day's d5/d15/d25 and level.
+- The statistics page adds 20- and 60-session returns by risk level, presented as in section 3.4.
 
-### 3.5 押し目の深さを変えた比較（outcomes.py の拡張）
+### 3.5 Comparing correction depths (extension of outcomes.py)
 
-ねらい: スキルの「3% 以上の下落」は、IBD の人の判断による「調整局面」の代わりに決めた数字にすぎない。この数字を変えると FTD の数とその後の成績がどう変わるかを示し、定義の違いを数字で理解できるようにする。
+Aim: the skill's "3% decline" is only a number chosen in place of IBD's human judgment of a
+"correction". Show how the FTD count and outcomes change with that number, so the difference in
+definitions is visible in numbers.
 
-- 比べる深さは、3%（スキルの既定）、5%、8%、10% の4通り。
-- 仕組み:
-  - 深さは `rally_tracker.py` のモジュール定数 `MIN_CORRECTION_PCT`（35行目）で決まり、判定のたびに読まれる（72行目）。
-  - vendor のファイルは書き換えない。`loader.py` が深さごとに `rally_tracker` を別のモジュールとして読み込み、その定数だけを書き換える。ほかの定数は既定のまま。
-  - 深さごとに §3.2〜§3.4 の再生を丸ごと行う。計算は 4 倍になるが、数十秒の見込み。
-- 出すもの:
-  - 深さごとの FTD の件数、年あたりの件数、成績の中央値と四分位の範囲、60 セッション以内の無効化率。
-  - 同じ FTD が、どの深さまで残るかの対応表。深さを変えると基準になるスイングローが変わり、ラリーの日数もずれるので、深い設定の FTD が浅い設定にない日になることもある。対応表では、日付が一致するもの、深い設定だけにあるもの、浅い設定だけにあるものを分けて数える。
-- 公開の扱い:
-  - 3% はスキルと同じ判定として、イベント一覧とチャートに出す。
-  - 5%、8%、10% は統計ページの比較だけに使い、「スキルの定義ではない、研究用の設定」と明記する。
-- 注意点: スイングローの基準になる高値は 40 本前までしか探さず、判定の窓も 60 本しかない（§1.1）。そのため、40 本より長くかけて 8〜10% 下げた局面は、押し目として認識されないことがある。深い設定ほど件数が少なく出る方向にずれるので、統計ページに書き、件数が 10 件未満の設定は「参考値」と表示する。
+- Depths: 3% (skill default), 5%, 8%, 10%.
+- Mechanism:
+  - The depth is the module constant `MIN_CORRECTION_PCT` of `rally_tracker.py` (line 35), read
+    on every judgment (line 72).
+  - Vendor files are not edited. `loader.py` loads `rally_tracker` as a separate module per depth
+    and overrides only that constant; the other constants stay at their defaults.
+  - The replay of sections 3.2-3.4 runs in full per depth: four times the work, expected to take
+    tens of seconds.
+- Output:
+  - Per depth: FTD count, count per year, median and IQR of outcomes, invalidation rate within 60
+    sessions.
+  - Which FTDs survive to which depth. A different depth changes the anchoring swing low and
+    shifts the rally day count, so a deep setting's FTD can fall on a day the shallow one lacks.
+    Count same-date matches, deep-only and shallow-only separately.
+- Publication:
+  - 3% is the skill's judgment and appears in the event list and the chart.
+  - 5%, 8% and 10% appear only in the statistics comparison, labelled "a research setting, not
+    the skill's definition".
+- Caveat: the anchoring high is searched only 40 bars back and the judgment window is 60 bars
+  (section 1.1), so an 8-10% decline taking longer than 40 bars may not count as a correction.
+  Deeper settings are biased toward fewer FTDs; say so on the statistics page and label settings
+  with fewer than 10 FTDs "for reference".
+- As built, this comparison is part of research R (`research/variants.py`, `CORRECTION_PCTS`);
+  no separate `ftd_depth_variants.csv` is produced.
 
-### 3.6 研究段階: シグナルの洗練（段階 R。P4 より前に行う）
+### 3.6 Research phase R: refining the signals (before P4)
 
-背景（2026-11-07 の確認、`build/` の CSV から計算）:
-- DD になった日は全体の約 2 割（^GSPC 19.8%、^IXIC 20.5%）。25 日あたり平均約 5 回で、SEVERE の基準「25 日で 6 以上」は平均のすぐ上にある。d25 が 6 以上の日は約 3 割。
-- 60 日以内に 10% 以上下げる割合は、^GSPC で NORMAL 12.0%、SEVERE 19.7%。^IXIC では差がない（26.4% と 23.5%）。
-- FTD の後 60 日の騰落は、中央値が全日と変わらず、振れ幅が大きい。
+Background (checked 2026-11-07, computed from the CSVs in `build/`):
+- About 20% of days are DDs (^GSPC 19.8%, ^IXIC 20.5%), about 5 per 25 days on average, so the
+  SEVERE threshold "6+ in 25 days" sits just above the average. d25 is 6+ on about 30% of days.
+- The share of days followed by a 10%+ decline within 60 days: ^GSPC NORMAL 12.0%, SEVERE 19.7%.
+  ^IXIC shows no difference (26.4% and 23.5%).
+- Returns in the 60 days after an FTD have the same median as all days and a wider spread.
 
-この背景の数字は、2000〜2026 年の全期間から計算した。全期間には、後で決めた検証期間（2015 年以降）が含まれる。つまり R の設計の前に、検証期間を含む統計を見ていた。これは、同点の決め方、R2 の下見に続く三つ目の「検証期間を見ていた例外」である（再レビューでの訂正 2026-11-07、下の「再レビューの訂正（R）」を参照）。数字そのものは `research/contamination.py` に記録し、公開前の検査が `daily_status.csv` から計算し直して一致を確かめる。
+These background figures were computed over the whole of 2000-2026, which includes the test
+period chosen later (2015 onward). So statistics including the test period were seen before R
+was designed. This is the third exception of "having seen the test period", after the tie-break
+rule and the R2 preview (corrected in the re-review of 2026-11-07; see "Re-review corrections
+(R)" below). The figures are recorded in `research/contamination.py`, and the publish gate
+recomputes them from `daily_status.csv` and checks they match.
 
-目的: スキルの定義をそのまま基準に置き、条件を変えた案と比べて、守りの判断に使えるシグナルに近づける。良い条件が見つかれば、claude-trading-skills のスキルの改良案として出す。
+Goal: keep the skill's definition as the baseline, compare variants against it, and move toward
+signals usable for defensive decisions. A good variant becomes an improvement proposal for the
+claude-trading-skills skill.
 
-**当てはめすぎを防ぐ決まり（先に固定する）**
-- 期間を分ける。条件を選ぶ期間は 2000-01-03〜2014-12-31、確かめる期間は 2015-01-02〜2026-11-06。確かめる期間の終わりは、`research/split.py` の定数 `TEST_END` として固定した日付で、データの最新日ではない（R と R2 で同じ）。2026-11-06 より後のセッションは確かめる期間に入れず、「今後の記録」にだけ入れる。
-- 条件は、選ぶ期間の成績だけで選ぶ。確かめる期間の成績は、基準と選んだ案について一度だけ出し、それを見てから条件を変えない。
-- 試した案の数をすべて記録して、報告に出す。
-- 指数ごとに分けて評価し、合算しない。
+**Rules against overfitting (fixed in advance)**
+- Split the period. Selection period 2000-01-03 to 2014-12-31; test period 2015-01-02 to
+  2026-11-06. The end of the test period is the date fixed as the constant `TEST_END` in
+  `research/split.py`, not the newest data date (same for R and R2). Sessions after 2026-11-06
+  are not in the test period and go only into the "forward record".
+- Variants are chosen on selection-period results only. Test-period results are produced once,
+  for the baseline and the chosen variants, and nothing is changed after seeing them.
+- Every variant tried is recorded and reported.
+- Each index is evaluated separately, never pooled.
 
-**再レビューの訂正（R。2026-11-07）**
-- 確かめる期間の終わりを `TEST_END = 2026-11-06` に固定した。公開前の検査は、記録された終わりがこの定数と同じかを確かめる。
-- R にも「今後の記録」を置いた。基準と選んだ案（A、B、C）の成績を、確かめる期間と同じコードで、`TEST_END` より後のセッションについて計算する。データがない間は「記録開始前」と表示する。A と C は 60 セッション先まで揃った窓だけを数えるので、数字が出るのは B より遅い。
-- 上の「背景」は検証期間を含む全期間の統計から書いたので、三つ目の例外として、研究ページ、`report.html`、`selected.json` の `test_period_contamination`、Home の要点の注記に載せた。例外は三つ（同点の決め方、R2 の下見、この全期間の統計）。
-- 案の格子について、正確な経緯: 格子は計算の前にこの文書に書いた。しかし、ハッシュで固定するファイル `research/grid_freeze.json` を作ったのは、R の `variants.csv` が数回の実行で出た後（計算で数えると 4 回。最初は 20261108T032834Z）、R2 の `overlay_variants.csv` が出た後（3 回）だった。固定より前の実行の出力は、R2 はバイト単位で同じ。R の `variants.csv` は、列名 `min_decline_pct` を `min_decline_frac` に改めた分だけ見出しの行が違い、データの行はすべて同じ。この集計はファイルから計算し、`grid_freeze.json` の `provenance` に記録した。以前の「固定してから計算した」という書き方は、この経緯と合わないので改めた。
-- 日付と時刻: 登録日 2026-11-07 は手元（太平洋時間、UTC-8）の日付で、ハッシュのファイルを作った時刻は UTC で 2026-11-08T04:06:20Z。同じ時刻である（2026-11-07 20:06:20 PST）。UTC の日付が翌日になるのは、このため。
-- `avg_exposure`: B の「平均投資比率」の JSON のキーと CSV の列を `time_invested` から `avg_exposure` に改めた（名前が「投資していた日の割合」と誤解されるため）。古い実行を読む側は、`time_invested` を `avg_exposure` として読む。
+**Re-review corrections (R, 2026-11-07)**
+- The test period end is fixed at `TEST_END = 2026-11-06`. The publish gate checks that the
+  recorded end equals this constant.
+- R also has a "forward record": the baseline and chosen variants (A, B, C) computed with the
+  test-period code on sessions after `TEST_END`. Until there is data it shows "not started". A
+  and C count only windows with 60 sessions ahead, so they show numbers later than B.
+- The background above came from whole-period statistics including the test period, so as the
+  third exception it is noted on the research page, in `report.html`, in `selected.json`'s
+  `test_period_contamination` and in the Home key-point note. The three exceptions are the
+  tie-break rule, the R2 preview, and these whole-period statistics.
+- Exact history of the variant grid: the grid was written in this document before the
+  computations. But the hash-frozen file `research/grid_freeze.json` was created after R's
+  `variants.csv` had already come out of several runs (4 by computation, the first
+  20261108T032834Z) and after R2's `overlay_variants.csv` had come out (3 runs). Outputs from
+  runs before the freeze are byte-identical for R2. R's `variants.csv` differs only in the header
+  line, from renaming the column `min_decline_pct` to `min_decline_frac`; every data row is the
+  same. This tally was computed from the files and recorded in `grid_freeze.json`'s
+  `provenance`. The earlier wording "frozen, then computed" did not match this history and was
+  corrected.
+- Dates and times: the registration date 2026-11-07 is the local date (Pacific, UTC-8); the hash
+  file was created at 2026-11-08T04:06:20Z UTC. They are the same moment (2026-11-07 20:06:20
+  PST), which is why the UTC date is a day later.
+- `avg_exposure`: B's "average exposure" JSON key and CSV column were renamed from
+  `time_invested` to `avg_exposure` (the old name read as "share of days invested"). Readers of
+  old runs read `time_invested` as `avg_exposure`.
 
-**比べる案**
-- DD の条件:
-  - 下落率: -0.2%（基準）、-0.5%、-1.0%
-  - 出来高: 前日より多い（基準）、50 日平均より多い、その両方
-  - 危険度の基準: スキルの固定のしきい値（基準）と、過去 5 年の d25 の分布に対する位置（上位 20%、10%、5%）。分布は、その日より前のデータだけで計算する
-  - 下落率は vendor の `DistributionDayRule.min_decline_pct` で変える。出来高の条件は vendor の関数にないので、研究用のコードで別に書き、基準の設定のときに vendor と一致することをテストで確かめる
-- FTD の条件:
-  - 押し目の深さ: 3%（基準）、5%、8%、10%（§3.5 と同じ仕組み）
-  - 最低の上昇率: 1.25%（基準）、1.5%、2.0%（`FTD_GAIN_MINIMUM` を同じ仕組みで上書き）
-  - 出来高が 50 日平均を上回ることを必須にするか
+**Variants**
+- DD conditions:
+  - Decline: -0.2% (baseline), -0.5%, -1.0%
+  - Volume: above the previous day (baseline), above the 50-day average, both
+  - Risk basis: the skill's fixed thresholds (baseline), or d25's position in its trailing 5-year
+    distribution (top 20%, 10%, 5%), computed from data before that day only
+  - Decline is varied through the vendored `DistributionDayRule.min_decline_pct`. The volume
+    conditions are not in the vendored functions, so research code implements them, tested to
+    match the vendor at the baseline setting
+- FTD conditions:
+  - Correction depth: 3% (baseline), 5%, 8%, 10% (same mechanism as section 3.5)
+  - Minimum gain: 1.25% (baseline), 1.5%, 2.0% (`FTD_GAIN_MINIMUM` overridden the same way)
+  - Whether volume above the 50-day average is required
 
-**評価の方法**
-- A. FTD を売買として評価する:
-  - detected_on の引けで買う。
-  - 終値が FTD の日の安値を割ったら、その日の引けで売る（`check_ftd_invalidation` と同じ判定）。
-  - 割らなければ 60 セッション後の引けで売る。
-  - 出すもの: 件数、勝率、1 回あたりの損益の中央値と平均、下位 10% と上位 10%、プロフィットファクター。
-- B. DD の危険度を、投資比率の調整として評価する:
-  - 危険度が基準以上の日は、翌日から比率を 0% または 50% にする。それ以外は 100%。
-  - シグナルはその日の引けで決め、翌日の値動きから反映する。現金の利回りは 0 とする。
-  - 出すもの: 年率の騰落、最大の下落、変動の大きさ、投資していた期間の割合。買って持ち続けた場合と並べる。
-- C. 事象として見る: 60 日以内に 10% 以上下げる割合を、危険度ごとに出す（今の集計と同じ形）。
+**Evaluation**
+- A. FTD as a trade:
+  - Buy at the close of detected_on.
+  - Sell at the close on the day the close breaks the FTD day's low (same as
+    `check_ftd_invalidation`).
+  - Otherwise sell at the close 60 sessions later.
+  - Output: count, win rate, median and mean P&L per trade, bottom and top 10%, profit factor.
+- B. DD risk as exposure control:
+  - On days at or above the risk threshold, exposure goes to 0% or 50% from the next day;
+    otherwise 100%.
+  - The signal is set at that day's close and applies from the next day's move. Cash earns 0.
+  - Output: annualized return, maximum drawdown, volatility, share of time invested, next to buy
+    and hold.
+- C. As events: the share followed by a 10%+ decline within 60 days, per risk level (as in the
+  current tables).
 
-**出すもの**
-- `build/research/` に、案ごとの結果の CSV と、試した案の一覧を出す。
-- 手元で見る研究レポートの HTML を作る。基準と、選んだ案と、確かめる期間の結果を並べる。
+**Output**
+- Per-variant result CSVs and the list of variants tried, in `build/research/`.
+- A local research report in HTML: baseline, chosen variants, and the test-period results side
+  by side.
 
-**完了の条件**
-- 基準の設定の結果が、vendor のコードによる P3 の結果と一致すること。
-- どの計算も、その日より後のデータを使っていないこと（テストで確かめる）。
-- 選ぶ期間と確かめる期間が、コードの上で分かれていること。
+**Done when**
+- Baseline results equal P3's results from the vendored code.
+- No computation uses data after its day (tested).
+- Selection and test periods are separated in the code.
 
-### 3.7 研究段階 R2: FTD 後のレバレッジ上乗せ（P5 の後に行う）
+### 3.7 Research phase R2: leverage overlay after an FTD (after P5)
 
-ユーザーの仮説（2026-11-07）: S&P 500 を常に 100% 持ち、FTD が出たら信用取引で比率を上げ、FTD の後にディストリビューションデーが増えたら 100% に戻せば、買い持ちに超過収益を上乗せできるのではないか。
+The owner's hypothesis (2026-11-07): hold the S&P 500 at 100% always, raise exposure on margin
+when an FTD appears, and go back to 100% when distribution days pile up after the FTD; this
+might add excess return over buy and hold.
 
-下見の結果（2026-11-07、規則を先に固定して 1 回だけ計算。入る条件に「危険度が HIGH または SEVERE でないこと」を付けた版）:
-- 150%、借入金利年 5%、SEVERE で戻す案。^GSPC は 2000〜14 年が年率 2.1% と買い持ちの 2.3% を下回り、2015〜26 年は 11.4% で同じ。^IXIC は 2000〜14 年が -0.8% と買い持ちの 0.9% を下回り、2015〜26 年は 17.2% で買い持ちの 14.9% を上回った。
-- 上乗せしていた日は全体の 1〜2 割。FTD の時点で、調整中に溜まった DD のため危険度がすでに高いことが多く、入る機会が少ない。
-- このため R2 では、25 日の危険度ではなく「FTD の後に数えた DD の回数」で戻す。
+Preview result (2026-11-07, rules fixed first, computed once, with the entry condition "risk is
+not HIGH or SEVERE"):
+- 150%, 5% annual borrowing rate, back to 100% on SEVERE. ^GSPC: 2000-14 annualized 2.1%,
+  below buy and hold's 2.3%; 2015-26 11.4%, the same as buy and hold. ^IXIC: 2000-14 -0.8%,
+  below buy and hold's 0.9%; 2015-26 17.2%, above buy and hold's 14.9%.
+- Leveraged on only 10-20% of days. At an FTD the risk level is often already high from the DDs
+  accumulated during the correction, so there are few entries.
+- So R2 exits on "the number of DDs counted after the FTD" instead of the 25-day risk level.
 
-**当てはめすぎを防ぐ決まり**（§3.6 と同じ）
-- 条件を選ぶ期間は 2000-01-03〜2014-12-31、確かめる期間は 2015-01-02〜2026-11-06（固定した日付 `TEST_END`。§3.6 と同じ）。確かめる期間は、基準と選んだ案について一度だけ出す。
-- 案は下の 12 通りに限り、すべて記録する。指数ごとに評価する。
+**Rules against overfitting** (as in section 3.6)
+- Selection period 2000-01-03 to 2014-12-31; test period 2015-01-02 to 2026-11-06 (the fixed
+  `TEST_END`, as in section 3.6). The test period is produced once, for the baseline and the
+  chosen variants.
+- Only the 12 variants below, all recorded. Each index evaluated separately.
 
-**案（12 通り）**
-- 入る: FTD の detected_on の引けで比率を上げる（翌日の値動きから反映）。危険度の条件は付けない。上乗せ中に次の FTD が出ても何もしない。
-- 戻す: 次のどれかが起きた日の引けで 100% に戻す（翌日から反映）。
-  - FTD の日より後に数えた DD が k 回に達した（k = 3、4、5）
-  - FTD が無効になった（終値が FTD の日の安値を下回った。`check_ftd_invalidation` と同じ判定）
-  - 戻す条件として「無効化を使う」「使わない」の 2 通り
-- 比率: 125%、150%
-- 3 × 2 × 2 = 12 通り。基準は「上乗せしない買い持ち 100%」。
+**Variants (12)**
+- Entry: raise exposure at the close of the FTD's detected_on (applies from the next day). No
+  risk condition. A new FTD during an overlay does nothing.
+- Exit: back to 100% at the close of the day any of these happens (applies from the next day):
+  - k DDs counted after the FTD day (k = 3, 4, 5)
+  - the FTD is invalidated (close below the FTD day's low, as `check_ftd_invalidation`)
+  - invalidation used as an exit or not: 2 ways
+- Exposure: 125%, 150%
+- 3 x 2 x 2 = 12. Baseline: buy and hold at 100% with no overlay.
 
-**費用とデータ**
-- 借入の金利は、FRED の実効フェデラルファンド金利（`DFF`、日次）に年 1.5% を足したものを基本とする。FRED のデータは手元のキャッシュに保存する。
-- 比較用に、年 0%、3%、6% の固定金利でも計算する。
-- 指数は価格指数で、配当を含まない。上乗せ分の配当も含まないので、上乗せの効果はやや少なめに出る。
+**Costs and data**
+- Borrowing rate: FRED's effective federal funds rate (`DFF`, daily) plus 1.5% a year, cached
+  locally.
+- For comparison, fixed rates of 0%, 3% and 6% a year.
+- The indexes are price indexes without dividends; the overlay's dividends are missing too, so
+  the overlay effect comes out slightly low.
 
-**評価**
-- 年率の騰落、最大の下落、変動の大きさ、上乗せしていた日の割合、上乗せの回数。
-- 比べる相手:
-  - 買い持ち 100%
-  - 同じ平均の比率で、いつも借りておく場合（タイミングに意味があるかを見る）
-- 危険の指標: 上乗せ中に元手が一番減った割合。150% の場合、指数が約 33% 下げると元手の半分を失う。追証の目安として、元手に対する比率が規定を下回る日があったかも出す。規定の値は、レポートに明記して仮置きする。
-- 研究レポートに章を足し、チャートでは上乗せの期間を帯で示す。
+**Evaluation**
+- Annualized return, maximum drawdown, volatility, share of days leveraged, number of overlays.
+- Compared with:
+  - buy and hold at 100%
+  - always borrowing at the same average exposure (does timing matter?)
+- Risk: the largest fall of equity during an overlay. At 150%, an index fall of about 33% loses
+  half the equity. As a margin-call guide, whether equity fell below a set ratio on any day; the
+  ratio is a stated placeholder in the report.
+- A chapter in the research report; the chart shows overlay periods as bands.
 
-**完了の条件**
-- 上乗せしない設定の結果が、買い持ちの計算と一致すること。
-- どの判断も、その日より後のデータを使っていないこと（テストで確かめる）。
-- 選ぶ期間と確かめる期間が、コードの上で分かれていること。
-- 実際の売買をすすめるものではないことを、レポートに書くこと。
+**Done when**
+- The no-overlay setting equals the buy-and-hold computation.
+- No decision uses data after its day (tested).
+- Selection and test periods are separated in the code.
+- The report says this is not a recommendation to trade.
 
-**再レビューでの訂正（2026-11-07）**
-- 上の「下見」は、R2 を設計する前に 2015〜26 年の検証期間を見ていた。そのため、R2 の検証期間の結果は検証外データによる確認ではない。案の格子は R2 自身の計算の前にこの文書に書いたが、これだけでは検証期間が手つかずだったことにならない。ハッシュで固定したのは、R2 の `overlay_variants.csv` が出た後の 3 回の実行の後である（§3.6 の「再レビューの訂正（R）」を参照）。下見の内容と数字は overlay_selected.json の `test_period_contamination` に記録し、研究ページと report.html の R2 の章に載せる。
-- 2026-11-06 より後の新しいセッションは、まだ誰も見ていない期間として扱う。研究ページに「今後の記録」の表を置き、基準と選んだ案の成績を、同じコードで 2026-11-09 から計算する。データがない間は「記録開始前」と表示する。
-- 同点の決め方（selected.json の `tie_break_affected_picks` に、旧規則で選ばれていた案と今の案を記録）と、借入金利の取り方（FRED は各日の値を翌営業日に公表するので、前日の前の営業日以前の日付の最新値を使う）は、結果を見たあとに改めた。どちらも事後の変更として記録し、影響を計算して載せる。
-- 公開前の検査は、選択器の再実行、全ページの再描画、結果ファイルの再計算を行い、記録と違えば止める。
-- 結果ファイルの再計算は全部やり直す。キャッシュ済みの価格から、判定の再生、イベント、その後の成績、DD と FTD の統計（`daily_status.csv`、`ftd_events.csv`、`distribution_days.csv`、`ftd_outcomes.csv`、`rally_attempts.csv`、`dd_bucket_stats.csv`、`risk_level_stats.csv`）、研究 R と R2 の全ファイル（`variants.csv` の全行、`selected.json`、`test_results.csv`、`overlay_*`、`report.html`）を作り直し、公開しようとする実行のファイルと完全に一致することを求める。無視するのは生成時刻（`summary.json` の `generated_at` と `report.html` の「生成」）だけで、約 25 秒かかる。R2 の金利は、その実行が持つ `research/fred_DFF.csv` の写しを使う。
-- 借入金利のデータ（FRED の `DFF`）は、最後の観測が、最後の騰落に必要な金利の日付（価格データの最後から 3 番目のセッション。公開前の検査 `rate_data` と同じ基準）より前なら取得し直す（ファイルが 3 日より古いときも）。足りない日が 3 営業日までなら前の金利を引き継いで使い（公開前の検査は警告）、それを超えたら止まる。取り直しても 3 営業日を超えて足りなければ止まる（2026-11-26 のコード監査で、取得の経路と再計算の経路の基準をそろえた）。`--use-cache` では FMP と同じく取得しないので、古ければ分かりやすいメッセージで止まる。FRED だけを許すときは `--refresh-fred` を付ける。公開前の検査 `rate_data` は、最後の騰落に必要な金利が写しにあるかを見て、営業日 3 日までの引き継ぎは警告、それを超えるか無ければ不合格にする。
-- ベンダーのファイルは、`VENDOR.lock` のハッシュに加えて、上流の checkout（既定は `~/PycharmProjects/claude-trading-skills`、`CTS_CHECKOUT` または `--upstream` で変える）の `git show <ref>:<source>` とバイト単位で照合する。上流が無いときは理由を付けて SKIP と記録する。
+**Re-review corrections (2026-11-07)**
+- The preview above saw the 2015-26 test period before R2 was designed, so R2's test-period
+  results are not an out-of-sample check. The grid was written in this document before R2's own
+  computations, but that alone does not make the test period untouched. The hash freeze came
+  after 3 runs that produced R2's `overlay_variants.csv` (see "Re-review corrections (R)" in
+  section 3.6). The preview and its numbers are recorded in overlay_selected.json's
+  `test_period_contamination` and shown on the research page and in report.html's R2 chapter.
+- Sessions after 2026-11-06 are treated as a period nobody has seen. The research page has a
+  "forward record" table computing the baseline and the chosen variants with the same code from
+  2026-11-09. Until there is data it shows "not started".
+- The tie-break rule (selected.json's `tie_break_affected_picks` records the old rule's pick and
+  the current one) and the borrowing-rate lookup (FRED publishes each day's value on the next
+  business day, so the newest value dated on or before the business day before the previous day
+  is used) were changed after seeing results. Both are recorded as post-hoc changes, with their
+  computed effect.
+- The publish gate re-runs the selectors, re-renders every page and recomputes the result files,
+  and stops on any difference from the record.
+- The recomputation is complete. From the cached prices it rebuilds the replay, events, outcomes,
+  and DD and FTD statistics (`daily_status.csv`, `ftd_events.csv`, `distribution_days.csv`,
+  `ftd_outcomes.csv`, `rally_attempts.csv`, `dd_bucket_stats.csv`, `risk_level_stats.csv`) and
+  every file of research R and R2 (all rows of `variants.csv`, `selected.json`,
+  `test_results.csv`, `overlay_*`, `report.html`), and requires them to equal the run being
+  published exactly. Only generation times are ignored (`summary.json`'s `generated_at` and
+  report.html's "generated"). It takes about 25 seconds. R2's rates come from that run's copy of
+  `research/fred_DFF.csv`.
+- The rate data (FRED `DFF`) is re-fetched when its last observation is earlier than the rate
+  date the last return needs (the third-last price session, the same basis as the gate's
+  `rate_data` check), or when the file is more than 3 days old. A gap of up to 3 business days
+  carries the previous rate forward (the gate warns); a longer gap stops. If a re-fetch still
+  leaves a gap over 3 business days, it stops (the 2026-11-26 code audit aligned the fetch path
+  and the recomputation path). `--use-cache` does not fetch, as for FMP, so stale data stops with
+  a clear message; `--refresh-fred` allows FRED alone. The gate's `rate_data` checks that the
+  copy has the rate the last return needs: carry-forward of up to 3 business days warns, more or
+  none fails.
+- Vendor files are checked against the `VENDOR.lock` hashes and also byte for byte against
+  `git show <ref>:<source>` in the upstream checkout (default
+  `~/PycharmProjects/claude-trading-skills`, changed with `CTS_CHECKOUT` or `--upstream`).
+  Without the upstream checkout it records SKIP with the reason.
 
-## 4. 公開物
+## 4. Published files
 
-### 4.1 データ（`/data/`）
+### 4.1 Data (`/data/`)
 
-| ファイル | 内容 |
+Planned, not yet published (ticket "publish the FTD and DD detection history as CSV").
+
+| File | Content |
 |---|---|
-| `daily_status.csv` | 日付、指数、前日比、出来高の前日比、DD かどうか、有効な DD の数、FTD の状態。終値と出来高そのものを入れるかは R7 で決める |
-| `ftd_events.csv` | 指数、ラリー初日、`ftd_date`、`detected_on`、`lag_sessions`、何日目か、上昇率、出来高の前日比、50日平均を上回ったか、`invalidated_at_detection`、無効化の日 |
-| `distribution_days.csv` | 指数、日付、下落率、出来高の前日比、失効日（26 セッション目）、無効化の日と理由 |
-| `ftd_outcomes.csv` | FTD ごとのその後の成績 |
-| `ftd_depth_variants.csv` | 押し目の深さ別の FTD の一覧。深さ、指数、`ftd_date`、`detected_on`、成績（§3.5） |
-| `summary.json` | 統計のまとめ、データの期間、生成日時、vendor の元コミット |
-| `data_dictionary.md` | 列の意味と判定ルール。英語 |
-| `data_issues.csv` | 出来高が 0、空、前日と同じ行 |
+| `daily_status.csv` | Date, index, change, volume change, DD or not, active DD count, FTD state. Closes and volumes themselves were to follow R7; the public dashboard's data files already carry closes, lows and volume changes since 2026-11-28 |
+| `ftd_events.csv` | Index, rally day 1, `ftd_date`, `detected_on`, `lag_sessions`, rally day, gain, volume change, above the 50-day average, `invalidated_at_detection`, invalidation date |
+| `distribution_days.csv` | Index, date, decline, volume change, expiry date (26th session), invalidation date and reason |
+| `ftd_outcomes.csv` | Outcomes after each FTD |
+| `summary.json` | Summary statistics, data period, generation time, vendor source commit |
+| `data_dictionary.md` | Column meanings and judgment rules, in English |
+| `data_issues.csv` | Rows with zero, empty, or repeated volume |
 
-サイトのルートに `llms.txt` を置き、AI が最初に読む案内として、各ファイルの URL と `data_dictionary.md` を示す。
+`llms.txt` at the site root is the first thing an AI reads: the URL of each file and
+`data_dictionary.md`. The research site generates it (`webgen/`); the public dashboard does not
+have one yet.
 
-### 4.2 ページ（`/ja/` と `/en/`）
+### 4.2 Pages (`/ja/` and `/en/`)
 
-| ページ | 内容 |
+The research site (`webgen/`, built into `build/current`, local):
+
+| Page | Content |
 |---|---|
-| トップ | 今日の状態、有効な DD の数、直近のイベント |
-| チャート | Plotly で価格と出来高を表示。FTD、ラリー初日、DD、無効化に印を付け、期間を切り替えられる |
-| イベント一覧 | FTD と DD の一覧。並べ替えと絞り込みができる |
-| 統計 | §3.4 の集計と、§3.5 の押し目の深さ別の比較 |
-| 定義 | ルールを図と実例で説明する。**IBD 公式の FTD ではなく、claude-trading-skills のスキルの定義による判定であること**と、IBD との主な違いを明記する |
-| データ | CSV のダウンロードと列の説明 |
+| Top | Today's state, active DD count, recent events |
+| Chart | Price and volume with marks for FTDs, rally day 1, DDs and invalidations; switchable ranges |
+| Events | FTDs and DDs, sortable and filterable |
+| Statistics | The tables of section 3.4 and the depth comparison of section 3.5 |
+| Definitions | The rules with diagrams and examples. States that **these are judgments by the claude-trading-skills skills' definitions, not IBD's official FTD**, and the main differences from IBD |
+| Data | CSV downloads and column descriptions |
 
-- サイトのルート `/` は、言語を選ぶページにする。
-- 文言は `site/templates/i18n/ja.yaml` と `en.yaml` に分け、同じキーがそろっていることをテストで確かめる。
+- The site root `/` lets the reader choose a language.
+- Wording lives in `site/templates/i18n/ja.yaml` and `en.yaml`; a test checks the keys match.
 
-## 5. 公開と検証（publish.py）
+The public dashboard (`pages/site/`) is smaller: a top page and a look-back page per language,
+built for phones (section 5.2).
 
-`publish.py --output-dir <新しいディレクトリ>` が生成と検証を行い、合格したときだけ終了コード 0 を返す。
+## 5. Build and validation (publish.py)
 
-検証する項目:
-- 最新の日付が、実行時点の直近の XNYS 営業日と一致する。
-- 両方の指数がそろい、営業日と過不足なく一致する。
-- CSV の列が `data_dictionary.md` の定義と一致する。
-- `ftd_events.csv` の行数と `summary.json` の件数が一致する。DD についても同じ。
-- `VENDOR.lock` のハッシュが一致する。
-- **前回公開版との差分。** 前回公開した `ftd_events.csv` と `distribution_days.csv` を取得し、最新日以外のイベントの追加、削除、変更を数える。FMP が過去のデータを直すと、過去のイベントが変わるため。差分は `validation.json` に記録し、5 件を超えたら不合格にする。この上限は運用しながら見直す。上限を超えたときは、分かりやすいメッセージをログ（`logs/needs_review.log`）に書き、`build/NEEDS_REVIEW` を作る。次に合格した実行がこのファイルを消す。この間 `build/current` は前の版のまま。
-- **ブラウザ検査が実行できなかった場合は不合格。** Playwright の入った python は、環境変数 `PLAYWRIGHT_PYTHON`、なければ PATH の `python3` などから `import playwright` を試して決める。見つからなければ SKIP ではなく不合格にする。意図して許すときだけ `--allow-no-browser` を付ける。
+`publish.py --output-dir <new directory>` builds and validates, and returns exit code 0 only on
+PASS.
 
-### 5.1 定時実行
+Checks:
+- The newest date equals the latest XNYS session at run time.
+- Both indexes are present and match the sessions exactly.
+- CSV columns match the definitions in `data_dictionary.md`.
+- Row counts of `ftd_events.csv` equal the counts in `summary.json`; the same for DDs.
+- The `VENDOR.lock` hashes match.
+- **Difference from the previous published version.** Take the previously published
+  `ftd_events.csv` and `distribution_days.csv` and count events other than on the newest date
+  that were added, removed or changed, since FMP corrections to old data change old events. The
+  difference is recorded in `validation.json`; more than 5 fails. The limit will be reviewed in
+  operation. On exceeding it, a clear message goes to `logs/needs_review.log` and
+  `build/NEEDS_REVIEW` is created; the next passing run removes it. Meanwhile `build/current`
+  stays at the previous version. On GitHub Actions each run starts with no previous version, so
+  this check has nothing to compare against there.
+- **A browser check that cannot run fails.** The Python with Playwright is `PLAYWRIGHT_PYTHON`,
+  or else `python3` on PATH and similar, tried with `import playwright`. If none is found the
+  result is FAIL, not SKIP. `--allow-no-browser` allows it only on purpose.
 
-手元専用の間は、GitHub Actions と Pages を使わない。
+### 5.1 Running on the Mac
 
-- Mac の launchd で、平日の 15:00（太平洋時間。Mac の時刻は PST）に実行する。米国東部の 18:00 にあたり、引けから 2 時間後。launchd は Mac の時刻で動き、太平洋時間と東部時間は同じ日に夏時間が切り替わるので、年間を通じて東部の 18:00 になる。
-- 待ち時間が足りるかは、運用の最初の 2 週間で確かめる。
-- 出力先は `~/PycharmProjects/ftd-dd-dashboard/build/`。毎回 `build/runs/<日時>/` に作り、検証に合格したときだけ `build/current` のリンクを差し替える。不合格なら前の版が残る。
-- `FMP_API_KEY` は `.env` に置き、`.gitignore` に入れる。同じファイルに `PLAYWRIGHT_PYTHON` を書いてもよい。
-- 実行は `scripts/run_daily.sh`。launchd の雛形は `launchd/com.ftd-dd-dashboard.daily.plist`（`__PROJECT_DIR__` を置き換えて使う）。どちらも用意しただけで、インストールも読み込みもしていない。入れるかどうかは持ち主が決める。ログは `logs/daily-YYYYMMDD.log`。
-- 定時の実行では、`--no-site-check` と `--allow-no-browser` を絶対に付けない。`run_daily.sh` が `FTD_DD_SCHEDULED=1` を設定し、この 2 つが付いていると `publish.py` が終了コード 2 で断る。`--use-cache` も付けない（毎日、新しい価格を取る）。
-- 実行の保管: 合格した直近 10 回と `build/current` の指す実行を残し、それより古い実行を消す。不合格の実行は 7 日たったら消す。`build/current` の指す実行は消さない。スクリーンショット（約 50 MB）は既定では保存せず、ブラウザ検査が不合格のときだけ診断用に実行へ残す。`--keep-screens` を付けると、その実行だけが持つ（古い実行の分は消える）。画像なしの 1 回は約 6 MB。
-- 公開の許可が取れたら、market_breadth と同じ Actions と Pages の構成（keepalive、build、deploy）を足す。
+- The plan was for launchd to run `scripts/run_daily.sh` at 15:00 on weekdays (Pacific; the Mac
+  clock is Pacific), which is 18:00 Eastern, two hours after the close. Pacific and Eastern
+  switch daylight saving on the same day, so it is 18:00 Eastern all year. Whether the wait is
+  long enough is to be checked over the first two weeks.
+- As installed on 2026-11-28, only the pages job (`com.ftd-dd-dashboard.pages`) is loaded; it
+  runs `run_daily.sh` through `publish_pages.sh` at the same time. The daily plist is a template
+  that has not been installed. Once the pages job is removed (section 5.2), nothing runs on the
+  Mac on a schedule.
+- Output goes to `~/PycharmProjects/ftd-dd-dashboard/build/`: each run in `build/runs/<time>/`,
+  and `build/current` is repointed only on PASS. On FAIL the previous version stays.
+- `FMP_API_KEY` is in `.env`, which is git-ignored. The same file may set `PLAYWRIGHT_PYTHON`.
+- Templates: `launchd/com.ftd-dd-dashboard.daily.plist` (the validated build) and
+  `launchd/com.ftd-dd-dashboard.pages.plist` (the public update of section 5.2); replace
+  `__PROJECT_DIR__` before installing. Logs: `logs/daily-YYYYMMDD.log`, `logs/pages-YYYYMMDD.log`.
+- Scheduled runs never pass `--no-site-check` or `--allow-no-browser`. `run_daily.sh` sets
+  `FTD_DD_SCHEDULED=1`, and `publish.py` then refuses both with exit code 2. `--use-cache` is
+  not passed either: every day fetches fresh prices.
+- Retention: keep the last 10 passing runs and the one `build/current` points to; delete older
+  ones. Failing runs are deleted after 7 days. Screenshots (about 50 MB) are not kept by default,
+  only for a failed browser check, or with `--keep-screens` for that run. A run without images is
+  about 6 MB.
 
-## 6. 作業の順番
+### 5.2 The public dashboard
 
-各段階はテストを先に書いて進める。
+- `scripts/publish_pages.sh` runs `run_daily.sh`, then `pages/replay.py`, `pages/build_data.py`
+  and `pages/check.py`. It replaces the tree of a `gh-pages` clone and pushes. Any failure leaves
+  the site as it was.
+- GitHub Actions (`.github/workflows/daily-pages.yml`) runs it on weekdays at 23:30 UTC, which
+  is 18:30 Eastern in winter and 19:30 in summer. Each run fetches from FMP inside the runner;
+  nothing is cached or uploaded as an artifact. The key is the repository secret `FMP_API_KEY`,
+  and the push uses the workflow's `GITHUB_TOKEN`.
+- The Mac launchd job `com.ftd-dd-dashboard.pages` ran the same script before Actions took over.
+  It stays installed until the first scheduled Actions run (2026-11-30) succeeds, then it is
+  removed.
 
-| 段階 | 内容 | 完了の条件 |
+## 6. Order of work
+
+Each phase is test-first.
+
+| Phase | Content | Done when | Status (2026-11-28) |
+|---|---|---|---|
+| P0 | FMP terms (R7). The 2026-11-07 search excerpt says public display or distribution of FMP data, and of data computed from it, needs a separate Data Display and Licensing Agreement, even free and non-commercial. On 2026-11-07 the owner wrote to FMP from a personal mailbox (as reported by the owner) | A written answer from FMP fixing what may be published | No answer yet. The owner published anyway on 2026-11-28 (section 0) |
+| P1 | Repository, vendoring, loader | Both skills load in one process; the lock check passes | Done |
+| P2 | fetch, replay, dd_glue | The newest day's judgment equals production functions given the same `^GSPC` and `^IXIC` data (not compared through the CLI, which is fixed to QQQ); `dd_glue` equals production `analyze_index` | Done |
+| P3 | events, outcomes, the history | Every replay day equals the vendored code called directly on data up to that day. Differences from IBD's published dates are only reported | Done |
+| R | Research phase (section 3.6), including the depth comparison of section 3.5 | Section 3.6's conditions | Done |
+| P4 | CSVs, validation, publish.py | Validation tests with corrupted data all fail, including the previous-version difference | Done |
+| P5 | Japanese and English site | All pages render in both languages and the wording keys match | Done |
+| R2 | Research phase R2 (section 3.7), after P5. Not the same as risk R2 | Section 3.7's conditions | Done |
+| P6 | Daily run and `build/current` replacement | Manual and scheduled runs move `build/current`; a failed validation keeps the previous version | Done; the public update runs on GitHub Actions (section 5.2) |
+| P7 | Statistics page, depth comparison, llms.txt | Statistics counts equal the CSVs; the 3% setting equals the default P3 replay exactly; per-depth loads do not affect each other's constants | Partly: the research site has the statistics and llms.txt; the public dashboard has neither the `/data/` CSVs nor llms.txt |
+| P8 | Announcement | Links from the claude-trading-skills guide page and README | Not started |
+
+## 7. Risks
+
+| ID | Risk | Mitigation |
 |---|---|---|
-| P0 | FMP の利用規約の確認（R7）。2026-11-07 の検索結果の抜粋では、FMP のデータと、そこから計算したデータの公開表示や配布には、FMP との個別の契約（Data Display and Licensing Agreement）が必要とされている。無料・非商用でも同じ。FMP への書面での問い合わせで、公開してよい範囲を確定する。2026-11-07 に、本人が個人の Gmail から info@financialmodelingprep.com へ問い合わせを送った（本人の申告。送信済みフォルダはこちらから確認できない）。回答待ち | FMP から書面の回答を得て、公開してよい列とチャートが決まること。回答が得られるまで P6 の公開はしない |
-| P1 | リポジトリ作成、vendor の取り込み、loader | 2つのスキルを同じプロセスで読み込めること。lock のハッシュ検査が CI で通ること |
-| P2 | fetch と replay、dd_glue | 最新日の判定が、本番の関数に同じ `^GSPC` と `^IXIC` のデータを直接渡した結果と一致すること。本番の CLI は QQQ 固定なので CLI では比べない。`dd_glue` は本番の `analyze_index` と一致すること |
-| P3 | events と outcomes、過去分の一括作成 | 再生のどの日についても、その日までのデータで vendor のコードを直接呼んだ結果と一致すること。IBD の公表日との照合は、違いを報告するだけにする |
-| R | 研究段階（§3.6）。§3.5 の押し目の深さ別の比較も、ここで先に行う | §3.6 の完了の条件 |
-| P4 | CSV、検証、publish.py | 壊したデータを入れた検証のテストで、すべて不合格になること。前回公開版との差分の検査を含む |
-| P5 | サイトの日本語版と英語版 | 両方の言語で全ページが表示され、文言のキーがそろっていること |
-| 研究 R2 | 研究段階 R2（§3.7）。P5 の後に行う。リスク表の R2 とは別物 | §3.7 の完了の条件 |
-| P6 | launchd による毎日の実行と、`build/current` の差し替え | 手動実行と定時実行の両方で `build/current` が新しい版になること。検証に失敗したら前の版が残ること |
-| P7 | 統計ページ、押し目の深さ別の比較、llms.txt | 統計の件数が CSV と一致すること。3% の設定の結果が、P3 の既定の再生と完全に一致すること。深さごとの読み込みが、互いの定数に影響しないこと |
-| P8 | 告知 | claude-trading-skills の解説ページと README からリンクを張る |
+| R1 | Quality of old index volumes is unknown. DDs and FTDs depend on day-over-day volume, so results can change | Compare a few days of 2000-2006 volume with another source; if they disagree, start publication later |
+| R2 | FTDs appear late, some already invalidated when they appear | Output `detected_on` and `lag_sessions`; measure outcomes from `detected_on` (sections 3.3, 3.4) |
+| R3 | Missing rows from FMP's 5,000-row limit | Row-count check per range and a session match fail the run |
+| R4 | Skill updates change judgments | Vendor at a fixed commit and update by PR; the PR shows the difference in past events |
+| R5 | Production skill and site use different symbols: the skill uses QQQ or SPY, the site the indexes | State it on the definitions page; whether to align the skill is Q1 |
+| R6 | Misreading statistics: these FTDs are more frequent than IBD's and counts are small | Per index, with counts and ranges, non-overlapping samples; state that this is not IBD's official signal |
+| R7 | Redistributing FMP data may breach its terms | Asked in P0. The site is public since 2026-11-28 with that risk accepted by the owner. If FMP objects: publish only judgments and ratios, draw charts from ratios, or use a source that allows it |
+| R8 | FMP corrections to old data silently change past events | Difference check against the previous version (section 5) |
+| R9 | Rows repeating the previous day's volume change judgments | Publish them in `data_issues.csv` and explain on the definitions page |
+| R10 | Deep correction settings miss slow declines and undercount | Write the caveat of section 3.5 on the statistics page; label settings with fewer than 10 FTDs "for reference" |
 
-手元で使い始めるのは P1〜P6 まで。P7 は後から足す。P0 は公開するときの前提なので、手元での開発と並行して進める。P8 は公開の許可が取れてから行う。
+## 8. Open questions
 
-## 7. リスク
-
-| ID | 内容 | 対策 |
+| ID | Question | Proposal |
 |---|---|---|
-| R1 | 古い年の指数の出来高の質が分からない。DD と FTD は出来高の前日比で決まるので、結果が変わりうる | 2000〜2006 年の出来高を、別の情報源と数日分だけ照らし合わせる。合わなければ公開の開始年を遅らせる |
-| R2 | FTD が後から現れる。現れた時点で無効化済みのものもある | `detected_on` と `lag_sessions` を出し、成績は `detected_on` から測る（§3.3、§3.4） |
-| R3 | FMP の上限 5,000 行による取りこぼし | 区間ごとの行数の検査と、営業日との照合で失敗にする |
-| R4 | スキルの更新で判定が変わる | vendor をコミットで固定し、更新は PR で行う。更新の PR では過去のイベントの差分を出す |
-| R5 | 本番のスキルとサイトで使う銘柄が違う。スキルは QQQ や SPY、サイトは指数 | 定義ページに明記する。スキル側をそろえるかは Q1 |
-| R6 | 統計の誤読。FTD は IBD より多く出るうえ、件数は少ない | 指数別、件数と範囲つき、重ならない標本で出す。IBD 公式ではないことを明記する |
-| R7 | FMP の生データの再配布が、利用規約に触れるおそれ | P0 で確かめる。認められない場合は、判定結果と比率だけを公開し、チャートは比率から描くか、利用が認められた別の情報源を使う |
-| R8 | FMP による過去データの修正で、過去のイベントが知らないうちに変わる | 前回公開版との差分の検査（§5） |
-| R9 | 前日と同じ出来高の行で、判定が変わる | `data_issues.csv` で公開し、定義ページで説明する |
-| R10 | 深い押し目の設定で、長くかけた下げが認識されず、件数が少なく出る | §3.5 の注意点を統計ページに書く。件数 10 件未満は参考値と表示する |
-
-## 8. 決めること
-
-| ID | 内容 | 案 |
-|---|---|---|
-| Q1 | ftd-detector スキルの QQQ を ^IXIC にそろえるか | サイト公開後に、別の Issue で検討する |
-| Q2 | 早く引ける日（感謝祭の翌日など）の扱い | 通常の営業日として判定し、イベント一覧に印を付ける |
-| Q3 | 前回公開版との差分の上限 | 初めは 5 件。運用しながら見直す |
+| Q1 | Align the ftd-detector skill's QQQ to ^IXIC? | Discuss in a separate issue after the site is public |
+| Q2 | Early-close days (e.g. the day after Thanksgiving) | Judge them as normal sessions and mark them in the event list |
+| Q3 | Limit for the difference from the previous version | Start at 5 and review in operation |
