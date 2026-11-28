@@ -4,11 +4,12 @@ History of Follow-Through Day (FTD) and Distribution Day (DD) signals for the S&
 (`^GSPC`) and NASDAQ Composite (`^IXIC`), replayed session by session with the decision
 logic of the `claude-trading-skills` skills (`ftd-detector`, `ibd-distribution-day-monitor`).
 
-**Local use only. Do not publish, push, or redistribute the data or generated output.**
-FMP's terms of service (sections 2.2.2 and 2.6.1) do not allow public display or
-distribution of its price and volume data (or data derived from it) without written
-permission. Until that is cleared, the repo holds code only; `data/raw/` and `build/`
-are git-ignored. See `docs/plan.md` section 0 and risk R7.
+**Dashboard: https://tradermonty.github.io/ftd-dd-dashboard/** (English / 日本語, updated
+after each US close)
+
+The `main` branch holds code only: FMP price data stays out of git (`data/raw/` and `build/`
+are git-ignored). The dashboard on the `gh-pages` branch is built by
+`scripts/publish_pages.sh`. See `docs/plan.md` section 0 and risk R7 for FMP's terms.
 
 Definitions are those of the skills, not official IBD signals.
 
@@ -16,9 +17,12 @@ Definitions are those of the skills, not official IBD signals.
 
 - Implemented: vendor + loader, fetch + replay + dd_glue, events and outcomes, research R
   and R2, validation and `publish.py`, the Japanese / English site, the daily job scripts
-  (`scripts/run_daily.sh`, `launchd/` template; not installed).
-- The vendored skills are still the 2026-11-08 version (`vendor/VENDOR.lock`). Updating to
-  claude-trading-skills `e1e33d16` (stateful replay, IBD-style market status) is ticket P2.
+  (`scripts/run_daily.sh`, `launchd/` template).
+- Public dashboard: `pages/` (replay, data builder, page check, the mobile pages) and
+  `scripts/publish_pages.sh`, run on weekdays by `launchd/com.ftd-dd-dashboard.pages.plist`.
+  It judges with claude-trading-skills `58108806` (`pages/skill/`).
+- The research build still vendors the 2026-11-08 skills (`vendor/VENDOR.lock`); updating it
+  is ticket P2.
 - Work is tracked as tickets in `tasks/` (task-runner layout; open `tasks/dashboard.html`).
 
 ## Setup
