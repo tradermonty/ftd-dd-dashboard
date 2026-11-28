@@ -1,0 +1,6 @@
+{
+  "ref": "58108806bb46b39cc6ea1995d975bc97681eaa2f",
+  "source_repo": "tradermonty/claude-trading-skills",
+  "source_dir": "skills/ftd-detector/scripts",
+  "note": "used by pages/replay.py for the public site; vendor/ftd_detector stays on a1d65fd450 for the research build"
+}

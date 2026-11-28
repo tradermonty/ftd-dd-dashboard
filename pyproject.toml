@@ -9,6 +9,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "pyyaml>=6",
     "pandas>=2",
+    # pages/skill (claude-trading-skills 58108806) pins this version
+    "pandas-market-calendars==5.2.2",
 ]
 
 [project.optional-dependencies]
@@ -28,7 +30,7 @@ pythonpath = ["."]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["vendor"]
+extend-exclude = ["vendor", "pages/skill"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
