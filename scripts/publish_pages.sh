@@ -52,10 +52,13 @@ run() {
     fi
     git -C "$WT" -c user.name=tradermonty -c user.email=tradermonty@users.noreply.github.com \
         commit -qm "data: sessions through $AS_OF" || return 1
-    T=$(gh auth token -u tradermonty) || { echo "no tradermonty token"; return 1; }
-    git -C "$WT" -c credential.helper= \
-        -c "credential.helper=!f() { echo username=tradermonty; echo password=$T; }; f" \
+    # The token travels in the environment of this one git call, never on a command line
+    # (argv is visible to every local user through ps); the helper expands it itself.
+    PAGES_PUSH_TOKEN=$(gh auth token -u tradermonty) || { echo "no tradermonty token"; return 1; }
+    PAGES_PUSH_TOKEN="$PAGES_PUSH_TOKEN" git -C "$WT" -c credential.helper= \
+        -c 'credential.helper=!f() { echo username=tradermonty; echo "password=$PAGES_PUSH_TOKEN"; }; f' \
         push -q origin HEAD:gh-pages || return 1
+    unset PAGES_PUSH_TOKEN
     echo "pushed $(git -C "$WT" log --oneline -1)"
 }
 
